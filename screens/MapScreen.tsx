@@ -156,12 +156,39 @@ const MapScreen: React.FC = () => {
 
       if (userActivitiesError) {
         console.error('Error loading user activities:', userActivitiesError);
+        
+        // Check if it's a missing table error
+        if (userActivitiesError.code === 'PGRST200' || userActivitiesError.message.includes('user_activities')) {
+          Alert.alert(
+            'Database Setup Required',
+            'The activities tables need to be set up in your database. Please run the COMPLETE_DATABASE_SETUP.sql script in your Supabase SQL Editor.',
+            [
+              { text: 'OK', onPress: () => setTribeMembers([]) }
+            ]
+          );
+          return;
+        }
+        
+        // Other database errors
+        Alert.alert('Database Error', 'Failed to load user activities. Please try again.');
         return;
       }
 
       if (!userActivities || userActivities.length === 0) {
-        console.log('No user activities found');
+        console.log('No user activities found - user needs to select some interests first');
         setTribeMembers([]);
+        
+        // Show helpful message for users with no activities
+        setTimeout(() => {
+          Alert.alert(
+            'Select Your Interests',
+            'To find nearby tribe members, please add some activities to your profile first!',
+            [
+              { text: 'Add Activities', onPress: () => {/* Navigate to activities */} },
+              { text: 'Later', style: 'cancel' }
+            ]
+          );
+        }, 1000);
         return;
       }
 
