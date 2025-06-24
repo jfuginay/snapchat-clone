@@ -78,12 +78,79 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .single()
 
         if (error && error.code === 'PGRST116') {
-          // User doesn't exist, profile will be created by signUp function
-          console.log('User profile not found - new user, profile creation handled by signUp function')
+          // User doesn't exist, could be new signup or existing auth user without profile
+          console.log('User profile not found - creating basic profile for authenticated user')
           
-          // For new signups, authenticate with session but no profile initially
-          // The signUp function will create the profile, then handleAuthStateChange will be called again
-          dispatch(setAuth({ user: null, session }))
+          // Create a basic user profile for users who have auth but no profile
+          try {
+            const { error: createError } = await supabase
+              .from('users')
+              .insert({
+                id: session.user.id,
+                email: session.user.email || '',
+                username: session.user.email?.split('@')[0] || `user_${session.user.id.substring(0, 8)}`,
+                display_name: session.user.email?.split('@')[0] || 'User',
+                avatar: '😊',
+                bio: '',
+                snap_score: 0,
+                last_active: new Date().toISOString(),
+                is_online: true,
+                settings: {
+                  share_location: false,
+                  allow_friend_requests: true,
+                  show_online_status: true,
+                  allow_message_from_strangers: false,
+                  ghost_mode: false,
+                  privacy_level: 'friends',
+                  notifications: {
+                    push_enabled: true,
+                    location_updates: true,
+                    friend_requests: true,
+                    messages: true
+                  }
+                },
+                stats: {
+                  snaps_shared: 0,
+                  friends_count: 0,
+                  stories_posted: 0
+                }
+              })
+
+            if (createError) {
+              console.error('Error creating user profile:', createError)
+              
+              // Check if error is due to duplicate (profile was just created by signUp)
+              if (createError.code === '23505') {
+                console.log('Profile already exists (created by signUp), fetching it...')
+                const { data: existingProfile } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .single()
+                
+                if (existingProfile) {
+                  dispatch(setAuth({ user: existingProfile, session }))
+                } else {
+                  dispatch(setAuth({ user: null, session }))
+                }
+              } else {
+                // Other error, still set session but without user profile
+                dispatch(setAuth({ user: null, session }))
+              }
+            } else {
+              // Fetch the newly created profile
+              const { data: newProfile } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single()
+              
+              dispatch(setAuth({ user: newProfile, session }))
+            }
+          } catch (profileCreateError) {
+            console.error('Error in profile creation:', profileCreateError)
+            dispatch(setAuth({ user: null, session }))
+          }
         } else if (error) {
           console.error('Error fetching user profile:', error)
           dispatch(clearAuth())

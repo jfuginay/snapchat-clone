@@ -22,8 +22,8 @@ const authSlice = createSlice({
     setAuth: (state, action: PayloadAction<{ user: User | null; session: any | null }>) => {
       state.user = action.payload.user
       state.session = action.payload.session
-      // User is authenticated if they have a valid session, even without a profile (new signups)
-      state.isAuthenticated = !!action.payload.session
+      // User is authenticated if they have both a valid session AND a user profile
+      state.isAuthenticated = !!(action.payload.session && action.payload.user)
       state.loading = false
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
