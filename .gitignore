@@ -31,7 +31,34 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.local
 .env*.local
 
 # typescript
 *.tsbuildinfo
+
+# Security and credentials
+google-services.json
+GoogleService-Info.plist
+*.key
+*.pem
+*.crt
+*.p12
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Build artifacts
+build/
+dist/
+
+# Old versions/duplicates
+snapchat/
+snapchat-clone/
