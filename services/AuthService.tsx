@@ -78,8 +78,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .single()
 
         if (error && error.code === 'PGRST116') {
-          // User doesn't exist, this might be a new signup
-          console.log('User profile not found, might be new user')
+          // User doesn't exist, profile will be created by signUp function
+          console.log('User profile not found - new user, profile creation handled by signUp function')
+          
+          // For new signups, authenticate with session but no profile initially
+          // The signUp function will create the profile, then handleAuthStateChange will be called again
           dispatch(setAuth({ user: null, session }))
         } else if (error) {
           console.error('Error fetching user profile:', error)
