@@ -1,34 +1,57 @@
-# Snapchat Clone - React Native
+# TribeFind - Find Your Tribe Through Shared Interests
 
-A full-featured Snapchat clone built with React Native, Expo, and Supabase. Features real-time authentication, camera functionality, cloud photo storage, and a modern user interface.
+**Find Interest Nurture Development (FIND)**
 
-## 🚀 Features
+TribeFind is a revolutionary social discovery platform that connects people through shared passions and interests. Built with AI-first principles at [EnginDearing.soy](https://tribefind.engindearing.soy/), TribeFind helps you discover your tribe by finding others who share your hobbies, skills, and interests in your local area.
 
-### ✅ Implemented
-- **Authentication System** - Sign up, login, logout with Supabase Auth
-- **Camera Integration** - Take photos with front/back camera toggle and flash control
-- **Cloud Storage** - Upload and store photos in Supabase Storage with RLS policies
-- **Photo Gallery** - View, scroll, and delete your photos
-- **Real-time Stats** - Profile stats that update automatically when photos are taken
-- **Redux State Management** - Comprehensive state management with 5 slices
-- **Location Services** - Privacy-controlled location tracking and settings
-- **Secure Configuration** - Environment variable-based configuration (no hardcoded secrets)
+## 🎯 The FIND Framework
 
-### 🔄 In Progress
-- Map integration with friend locations
-- Real-time messaging between users
-- Story/snap sharing with expiration
-- Friend discovery and management
+**F** - **Find** people with shared interests and passions  
+**I** - **Interest** discovery through activities and hobbies  
+**N** - **Nurture** meaningful connections and relationships  
+**D** - **Development** of skills and community growth  
+
+Visit us at: **[https://tribefind.engindearing.soy/](https://tribefind.engindearing.soy/)**
+
+## 🚀 TribeFind Features
+
+### ✅ Core FIND Features
+- **🎯 Interest Discovery** - Select activities and hobbies that define your passions
+- **🗺️ Tribe Mapping** - Find nearby people with shared interests using PostGIS spatial queries
+- **📍 Location-Based Discovery** - Discover tribe members within configurable radius (5km/10km/25km)
+- **🤝 Activity Matching** - Connect with people who share your specific interests and skill levels
+- **📱 Beautiful Onboarding** - TribeFind-branded authentication with AI-first principles messaging
+- **🔒 Privacy First** - Granular privacy controls for location sharing and tribe visibility
+- **📊 Real-time Stats** - Track your tribe connections and shared activity discoveries
+
+### ✅ Technical Implementation
+- **Authentication System** - Secure signup/login with Supabase Auth and profile creation
+- **Camera Integration** - Capture and share moments with your tribe
+- **Cloud Storage** - Secure photo storage with Row Level Security policies
+- **Redux State Management** - Comprehensive state management across 5 slices
+- **PostGIS Integration** - Advanced spatial queries for nearby tribe member discovery
+- **Activity System** - Comprehensive activity database with categories and skill levels
+
+### 🔄 Tribe Development Roadmap
+- Enhanced tribe messaging and communication
+- Activity-based event creation and planning
+- Skill sharing and mentorship connections
+- Tribe analytics and growth insights
+- AI-powered tribe recommendations
 
 ## 🛠 Tech Stack
+
+**Built with AI-First Principles at EnginDearing.soy**
 
 - **Frontend**: React Native with Expo
 - **State Management**: Redux Toolkit
 - **Backend**: Supabase (Auth, Database, Storage)
-- **Database**: PostgreSQL with Row Level Security
-- **Storage**: Supabase Storage with signed URLs
-- **Navigation**: React Navigation 6
-- **Camera**: Expo Camera with media library integration
+- **Database**: PostgreSQL with PostGIS for spatial queries
+- **Location Services**: PostGIS ST_DWithin for nearby tribe discovery
+- **Maps**: React Native Maps with custom tribe member markers
+- **Storage**: Supabase Storage with Row Level Security
+- **Navigation**: React Navigation 6 with tab-based tribe discovery
+- **Camera**: Expo Camera for tribe moment capture
 
 ## 📱 Setup Instructions
 
@@ -45,14 +68,16 @@ cd snapchat-clone
 npm install
 ```
 
-### 2. Supabase Setup
+### 2. Supabase Setup for TribeFind
 1. Create a new project at [supabase.com](https://supabase.com)
-2. Go to Project Settings → API to get your credentials
-3. Run the database setup script in Supabase SQL Editor:
+2. **Enable PostGIS Extension** for spatial tribe discovery
+3. Go to Project Settings → API to get your credentials
+4. Run the complete TribeFind database setup:
    ```sql
-   -- Copy and paste contents of database-setup-safe.sql
+   -- Copy and paste contents of COMPLETE_DATABASE_SETUP.sql
+   -- This creates activities, user_activities, spatial indexes, and PostGIS functions
    ```
-4. Set up storage bucket by running:
+5. Set up photo storage bucket:
    ```sql
    -- Copy and paste contents of supabase-storage-setup.sql
    ```
@@ -75,18 +100,25 @@ npx expo start
 
 Scan the QR code with Expo Go (Android) or Camera app (iOS) to run on your device.
 
-## 🏗 Project Structure
+## 🏗 TribeFind Project Structure
 
 ```
-snapchat-clone/
-├── screens/           # App screens (Auth, Camera, Home, Profile, etc.)
-├── components/        # Reusable UI components
-├── navigation/        # React Navigation setup
-├── store/            # Redux store and slices
-├── services/         # Authentication and API services
-├── lib/              # Supabase configuration and utilities
-├── assets/           # Images, icons, and static assets
-└── database-*.sql    # Database setup scripts
+tribefind-snapchat-clone/
+├── screens/           # TribeFind screens (Auth, Camera, Home, Map, Profile)
+│   ├── MapScreen.tsx     # Nearby tribe member discovery with PostGIS
+│   ├── AuthScreen.tsx    # Beautiful TribeFind-branded authentication
+│   └── ProfileScreen.tsx # User profile with tribe stats
+├── components/        # Reusable tribe discovery components
+│   └── ActivitySelector.js # Interest and hobby selection
+├── src/
+│   ├── services/         # Location service with PostGIS integration
+│   ├── sql/             # PostGIS functions and activity schemas
+│   └── examples/        # Usage examples for tribe features
+├── store/            # Redux store for tribe state management
+├── services/         # Authentication and tribe services
+├── lib/              # Supabase configuration for TribeFind
+├── assets/           # TribeFind branding and icons
+└── *_SETUP.sql       # Complete database setup for tribe discovery
 ```
 
 ## 🔐 Security Features
@@ -98,15 +130,22 @@ snapchat-clone/
 - ✅ No hardcoded credentials in source code
 - ✅ Proper authentication flow with session management
 
-## 📊 Database Schema
+## 📊 TribeFind Database Schema
 
-### Core Tables
-- `users` - Extended user profiles with settings and stats
-- `photos` - Photo metadata with cloud storage URLs
-- `locations` - User location history (privacy-controlled)
-- `chat_rooms` - Messaging infrastructure
-- `messages` - Chat messages with metadata
-- `friendships` - Friend relationships and requests
+### Core Tribe Discovery Tables
+- `users` - Extended profiles with PostGIS location and tribe stats
+- `activities` - Comprehensive activity/interest database with categories and icons
+- `user_activities` - User's selected interests with skill levels (beginner/intermediate/advanced)
+- `photos` - Tribe moment photos with cloud storage URLs
+- `friendships` - Tribe member connections and requests
+- `chat_rooms` - Tribe communication channels
+- `messages` - Tribe chat messages with metadata
+
+### PostGIS Spatial Features
+- **Location Column**: `GEOMETRY(POINT, 4326)` for precise coordinate storage
+- **Spatial Indexes**: GIST indexes for optimal nearby tribe member queries
+- **ST_DWithin Function**: Efficient radius-based tribe member discovery
+- **Distance Calculations**: Real-time distance sorting for nearby tribe members
 
 ## 🚀 Deployment
 
@@ -136,12 +175,14 @@ The app includes comprehensive debug logging:
 2. **Authentication fails**: Verify environment variables and Supabase setup
 3. **Camera not working**: Ensure proper permissions in app.json
 
-## 📖 Additional Documentation
+## 📖 TribeFind Documentation
 
-- [Database Setup Guide](DATABASE_FIX_GUIDE.md)
-- [Camera Implementation](CAMERA_SETUP_GUIDE.md)
-- [Storage Configuration](STORAGE_SETUP_GUIDE.md)
-- [Deployment Guide](DEPLOYMENT_GUIDE.md)
+- [Complete Database Setup](COMPLETE_DATABASE_SETUP.sql) - PostGIS and activity tables
+- [Database Error Fix Guide](DATABASE_ERROR_FIX.md) - Troubleshooting setup issues
+- [MapScreen Implementation](MAP_SCREEN_FIX_GUIDE.md) - Nearby tribe member discovery
+- [Camera Implementation](CAMERA_SETUP_GUIDE.md) - Tribe moment capture
+- [Storage Configuration](STORAGE_SETUP_GUIDE.md) - Cloud photo storage
+- [Deployment Guide](DEPLOYMENT_GUIDE.md) - Expo deployment process
 
 ## 🤝 Contributing
 
@@ -153,14 +194,21 @@ The app includes comprehensive debug logging:
 
 ## 📄 License
 
-This project is for educational purposes. Please respect Snapchat's intellectual property and trademarks.
+TribeFind is built with AI-first principles for connecting communities through shared interests. This project demonstrates modern React Native development with PostGIS spatial databases for social discovery platforms.
 
-## 🔗 Links
+## 🔗 TribeFind Links
 
+- **TribeFind Website**: [https://tribefind.engindearing.soy/](https://tribefind.engindearing.soy/)
 - **GitHub Repository**: https://github.com/jfuginay/snapchat-clone
 - **Expo Project**: https://expo.dev/accounts/jfuginay/projects/snapchat-clone
+- **EnginDearing.soy**: AI-First Engineering Principles
 - **Supabase Documentation**: https://supabase.com/docs
+- **PostGIS Documentation**: https://postgis.net/docs/
 
 ---
 
-Built with ❤️ using React Native and Supabase 
+**Built with AI-First Principles at EnginDearing.soy**  
+🎯 **TribeFind** - Where innovation meets community  
+**FIND**: Find Interest Nurture Development  
+
+*Connecting tribes through shared passions* ❤️ 
