@@ -421,8 +421,8 @@ const MapScreen: React.FC = () => {
               { 
                 text: 'Add Activities', 
                 onPress: () => {
-                  // Navigate to ProfileSetup screen where users can add activities
-                  navigation.navigate('ProfileSetup');
+                  // Navigate to Activities screen where users can select their interests
+                  navigation.navigate('Activities');
                 }
               },
               { text: 'Later', style: 'cancel' }

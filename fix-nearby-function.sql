@@ -1,5 +1,8 @@
--- PostGIS function to find nearby tribe members with shared activities
--- This function uses ST_DWithin for efficient spatial queries
+-- 🔧 Fix for nearby_tribe_members function
+-- This fixes the type mismatch error between UUID and INTEGER
+
+-- Drop and recreate the function with correct UUID[] parameter type
+DROP FUNCTION IF EXISTS get_nearby_tribe_members(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER, INTEGER[]);
 
 CREATE OR REPLACE FUNCTION get_nearby_tribe_members(
   user_lat DOUBLE PRECISION,
@@ -91,11 +94,5 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Grant access to authenticated users
 GRANT EXECUTE ON FUNCTION get_nearby_tribe_members TO authenticated;
 
--- Create indexes for better performance if they don't exist
-CREATE INDEX IF NOT EXISTS users_location_gist_idx ON users USING GIST (location::geography);
-CREATE INDEX IF NOT EXISTS users_is_online_idx ON users (is_online) WHERE is_online = true;
-CREATE INDEX IF NOT EXISTS user_activities_user_id_idx ON user_activities (user_id);
-CREATE INDEX IF NOT EXISTS user_activities_activity_id_idx ON user_activities (activity_id);
-
--- Example usage:
--- SELECT * FROM get_nearby_tribe_members(37.7749, -122.4194, 10000, ARRAY['uuid1', 'uuid2', 'uuid3']::UUID[]); 
+-- Success message
+SELECT '✅ Fixed nearby_tribe_members function - UUID parameter type issue resolved!' as status; 

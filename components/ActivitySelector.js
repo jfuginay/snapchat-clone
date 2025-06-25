@@ -78,64 +78,103 @@ const ActivitySelector = ({
    * Load all available activities from Supabase
    */
   const loadActivities = async () => {
+    console.log('🔍 ActivitySelector: Starting loadActivities...');
+    console.log('🔍 ActivitySelector: User exists:', !!user);
+    console.log('🔍 ActivitySelector: User ID:', user?.id);
+
     const { data, error } = await supabase
       .from('activities')
       .select('*')
       .eq('is_active', true)
       .order('popularity_score', { ascending: false });
 
+    console.log('🔍 ActivitySelector: Query result:', {
+      dataCount: data?.length,
+      error: error,
+      sampleData: data?.slice(0, 3)?.map(a => ({ 
+        name: a.name, 
+        is_active: a.is_active,
+        category: a.category 
+      }))
+    });
+
     if (error) {
-      console.error('Error loading activities:', error);
+      console.error('❌ ActivitySelector: Error loading activities:', error);
       throw error;
     }
 
     setActivities(data || []);
+    console.log('✅ ActivitySelector: Set activities count:', data?.length);
     
     // Extract unique categories
     const uniqueCategories = [...new Set(data?.map(activity => activity.category) || [])];
     setCategories(uniqueCategories);
+    console.log('✅ ActivitySelector: Set categories:', uniqueCategories);
   };
 
   /**
    * Load user's selected activities
    */
   const loadUserActivities = async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('user_activities')
-      .select(`
-        *,
-        activities (
-          id,
-          name,
-          category,
-          icon,
-          color
-        )
-      `)
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error loading user activities:', error);
-      throw error;
+    if (!user) {
+      console.log('🔍 ActivitySelector: No user found, skipping user activities');
+      return;
     }
 
-    setUserActivities(data || []);
-    
-    // Create selection map
-    const selectionMap = new Map();
-    data?.forEach(userActivity => {
-      selectionMap.set(userActivity.activity_id, {
-        skill_level: userActivity.skill_level,
-        interest_level: userActivity.interest_level,
-        is_teaching: userActivity.is_teaching,
-        is_learning: userActivity.is_learning,
-        notes: userActivity.notes
+    console.log('🔍 ActivitySelector: Loading user activities for user:', user.id);
+
+    try {
+      const { data, error } = await supabase
+        .from('user_activities')
+        .select(`
+          *,
+          activities (
+            id,
+            name,
+            category,
+            icon,
+            color
+          )
+        `)
+        .eq('user_id', user.id);
+
+      console.log('🔍 ActivitySelector: User activities query result:', {
+        dataCount: data?.length,
+        error: error,
+        sampleData: data?.slice(0, 2)
       });
-    });
-    
-    setSelectedActivities(selectionMap);
+
+      if (error) {
+        console.error('❌ ActivitySelector: Error loading user activities:', error);
+        // Don't throw error, just log it and continue with empty state
+        setUserActivities([]);
+        setSelectedActivities(new Map());
+        return;
+      }
+
+      setUserActivities(data || []);
+      
+      // Create selection map
+      const selectionMap = new Map();
+      data?.forEach(userActivity => {
+        selectionMap.set(userActivity.activity_id, {
+          skill_level: userActivity.skill_level,
+          interest_level: userActivity.interest_level,
+          is_teaching: userActivity.is_teaching,
+          is_learning: userActivity.is_learning,
+          notes: userActivity.notes
+        });
+      });
+      
+      setSelectedActivities(selectionMap);
+      console.log('✅ ActivitySelector: User activities loaded successfully, selections:', selectionMap.size);
+
+    } catch (error) {
+      console.error('❌ ActivitySelector: Exception loading user activities:', error);
+      // Don't throw error, just log it and continue with empty state
+      setUserActivities([]);
+      setSelectedActivities(new Map());
+    }
   };
 
   /**

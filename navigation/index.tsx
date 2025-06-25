@@ -15,6 +15,7 @@ import MapScreen from '../screens/MapScreen'
 import ProfileScreen from '../screens/ProfileScreen'
 import LocationSettingsScreen from '../screens/LocationSettingsScreen'
 import HomeLocationSettingsScreen from '../screens/HomeLocationSettingsScreen'
+import ActivitiesScreen from '../screens/ActivitiesScreen'
 import UserSearchScreen from '../screens/UserSearchScreen'
 
 const Stack = createStackNavigator()
@@ -154,6 +155,14 @@ export default function Navigation() {
                   fontWeight: 'bold',
                 },
                 headerTintColor: '#fff',
+              }}
+            />
+            <Stack.Screen 
+              name="Activities" 
+              component={ActivitiesScreen}
+              options={{
+                presentation: 'modal',
+                headerShown: false, // Using custom header in the component
               }}
             />
           </>
