@@ -112,6 +112,10 @@ export default function ProfileScreen() {
     navigation.navigate('LocationSettings' as never)
   }
 
+  const goToHomeLocationSettings = () => {
+    navigation.navigate('HomeLocationSettings' as never)
+  }
+
   if (!user) {
     return null
   }
@@ -172,6 +176,15 @@ export default function ProfileScreen() {
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.settingItem} onPress={goToHomeLocationSettings}>
+            <Text style={styles.settingIcon}>🏠</Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Home Location</Text>
+              <Text style={styles.settingSubtitle}>Set your home address</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>👥</Text>
             <View style={styles.settingContent}>
@@ -202,7 +215,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFC00',
+    backgroundColor: '#6366f1',
   },
   content: {
     flex: 1,

@@ -25,7 +25,7 @@ export default function AuthScreen() {
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, signInWithTwitter } = useAuth()
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -58,9 +58,25 @@ export default function AuthScreen() {
     }
   }
 
+  const handleTwitterAuth = async () => {
+    setLoading(true)
+
+    try {
+      const result = await signInWithTwitter()
+
+      if (result.error) {
+        Alert.alert('Twitter Authentication Error', result.error)
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred during Twitter authentication')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2', '#f093fb']}
+      colors={['#6366f1', '#8b5cf6', '#a855f7', '#c084fc']}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -162,7 +178,7 @@ export default function AuthScreen() {
                   disabled={loading}
                 >
                   <LinearGradient
-                    colors={loading ? ['#999', '#666'] : ['#FF6B6B', '#4ECDC4']}
+                    colors={loading ? ['#999', '#666'] : ['#8b5cf6', '#6366f1']}
                     style={styles.authButtonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -176,6 +192,27 @@ export default function AuthScreen() {
                       </Text>
                     )}
                   </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={styles.dividerContainer}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Twitter Sign In Button */}
+                <TouchableOpacity
+                  style={[styles.twitterButton, loading && styles.authButtonDisabled]}
+                  onPress={handleTwitterAuth}
+                  disabled={loading}
+                >
+                  <View style={styles.twitterButtonContent}>
+                    <Text style={styles.twitterIcon}>🐦</Text>
+                    <Text style={styles.twitterButtonText}>
+                      {loading ? 'Connecting...' : 'Continue with Twitter'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -356,7 +393,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   switchTextBold: {
-    color: '#3B82F6',
+    color: '#8b5cf6',
     fontWeight: 'bold',
   },
   footer: {
@@ -389,5 +426,47 @@ const styles = StyleSheet.create({
     color: '#E0E0E0',
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  twitterButton: {
+    backgroundColor: '#1DA1F2',
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  twitterButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  twitterIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  twitterButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }) 

@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useAppSelector } from '../store'
 import PhotoGallery from '../components/PhotoGallery'
 
@@ -7,25 +8,32 @@ export default function HomeScreen() {
   const { user } = useAppSelector((state: any) => state.auth)
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.welcome}>Hey {user?.display_name}! 👋</Text>
-          <Text style={styles.subtitle}>Your captured moments</Text>
-        </View>
+    <LinearGradient
+      colors={['#6366f1', '#8b5cf6', '#a855f7']}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={styles.welcome}>Hey {user?.display_name}! 👋</Text>
+            <Text style={styles.subtitle}>Your captured moments</Text>
+          </View>
 
-        <View style={styles.feed}>
-          <PhotoGallery />
+          <View style={styles.feed}>
+            <PhotoGallery />
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFC00',
+  },
+  safeArea: {
+    flex: 1,
   },
   content: {
     flex: 1,
@@ -37,12 +45,15 @@ const styles = StyleSheet.create({
   welcome: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   subtitle: {
     fontSize: 16,
-    color: '#333',
+    color: '#F0F0F0',
   },
   feed: {
     flex: 1,

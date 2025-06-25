@@ -14,6 +14,7 @@ import ProfileScreen from '../screens/ProfileScreen'
 import HomeScreen from '../screens/HomeScreen'
 import UserSearchScreen from '../screens/UserSearchScreen'
 import LocationSettingsScreen from '../screens/LocationSettingsScreen'
+import HomeLocationSettingsScreen from '../screens/HomeLocationSettingsScreen'
 
 const Stack = createStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -39,14 +40,14 @@ function TabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />
         },
-        tabBarActiveTintColor: '#FFFC00',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: '#a855f7',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.6)',
         tabBarStyle: {
-          backgroundColor: '#000',
-          borderTopColor: '#333',
+          backgroundColor: '#1e1b4b',
+          borderTopColor: '#312e81',
         },
         headerStyle: {
-          backgroundColor: '#FFFC00',
+          backgroundColor: '#6366f1',
         },
         headerTitleStyle: {
           color: '#000',
@@ -107,19 +108,51 @@ export default function Navigation() {
             <>
               <Stack.Screen name="Main" component={TabNavigator} />
               <Stack.Screen 
+                name="ProfileSetup" 
+                component={ProfileSetupScreen}
+                options={{
+                  headerShown: true,
+                  title: 'Add Activities',
+                  headerStyle: {
+                    backgroundColor: '#6366f1',
+                  },
+                  headerTitleStyle: {
+                    color: '#fff',
+                    fontWeight: 'bold',
+                  },
+                  headerTintColor: '#fff',
+                }}
+              />
+              <Stack.Screen 
                 name="LocationSettings" 
                 component={LocationSettingsScreen}
                 options={{
                   headerShown: true,
                   title: 'Location Settings',
                   headerStyle: {
-                    backgroundColor: '#FFFC00',
+                    backgroundColor: '#6366f1',
                   },
                   headerTitleStyle: {
-                    color: '#000',
+                    color: '#fff',
                     fontWeight: 'bold',
                   },
-                  headerTintColor: '#000',
+                  headerTintColor: '#fff',
+                }}
+              />
+              <Stack.Screen 
+                name="HomeLocationSettings" 
+                component={HomeLocationSettingsScreen}
+                options={{
+                  headerShown: true,
+                  title: 'Home Location',
+                  headerStyle: {
+                    backgroundColor: '#6366f1',
+                  },
+                  headerTitleStyle: {
+                    color: '#fff',
+                    fontWeight: 'bold',
+                  },
+                  headerTintColor: '#fff',
                 }}
               />
             </>
