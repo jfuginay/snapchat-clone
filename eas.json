@@ -9,20 +9,10 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "android": {
-        "gradle": {
-          "buildType": "debug"
-        }
-      }
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "android": {
-        "gradle": {
-          "buildType": "release"
-        }
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
