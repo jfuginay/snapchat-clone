@@ -3,20 +3,17 @@ import { supabase, User, testSupabaseConnection } from '../lib/supabase'
 import { useAppDispatch, useAppSelector } from '../store'
 import { setAuth, setLoading, clearAuth, updateUser } from '../store/authSlice'
 import { Session } from '@supabase/supabase-js'
-import * as Linking from 'expo-linking'
-import * as AuthSession from 'expo-auth-session'
-
 
 interface AuthContextType {
   signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ error?: string }>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
-  signInWithTwitter: () => Promise<{ error?: string }>
   signOut: () => Promise<{ error?: string }>
   resetPassword: (email: string) => Promise<{ error?: string }>
   updateProfile: (updates: Partial<User>) => Promise<{ error?: string }>
   refreshUser: () => Promise<void>
   testConnection: () => Promise<boolean>
-  debugTwitterProvider: () => Promise<boolean>
+  linkTwitterAccount: () => Promise<{ error?: string }>
+  clearSession: () => Promise<{ error?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -35,123 +32,43 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const dispatch = useAppDispatch()
-  const { user } = useAppSelector((state: any) => state.auth)
+  const { user } = useAppSelector((state) => state.auth)
 
   useEffect(() => {
-    // Test connection first
-    testSupabaseConnection().then((connected) => {
-      if (!connected) {
-        console.error('Supabase connection failed during initialization')
-        dispatch(clearAuth())
-        return
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔍 Initial session check:', { hasSession: !!session, userId: session?.user?.id })
+      if (session) {
+        handleAuthStateChange(session)
+      } else {
+        dispatch(setLoading(false))
       }
-
-      // Get initial session
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          console.error('Error getting session:', error)
-          if (error.message.includes('network') || error.message.includes('fetch')) {
-            console.error('Network error detected. Check your internet connection and Supabase configuration.')
-          }
-          dispatch(clearAuth())
-        } else {
-          handleAuthStateChange(session)
-        }
-      }).catch((error) => {
-        console.error('Session fetch error:', error)
-        dispatch(clearAuth())
-      })
     })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state change:', event, session?.user?.email)
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('✅ User signed in:', {
-          id: session.user.id,
-          email: session.user.email,
-          provider: session.user.app_metadata?.provider,
-          user_metadata: session.user.user_metadata
-        })
-      }
-      
+      console.log('Auth state changed:', event, session?.user?.id)
       handleAuthStateChange(session)
     })
 
-    // Handle deep links for OAuth callback
-    const handleDeepLink = async (event: { url: string }) => {
-      console.log('🔗 Deep link received:', event.url)
-      
-      if (event.url.includes('/auth/callback') || event.url.includes('#access_token=') || event.url.includes('?code=')) {
-        console.log('🔐 OAuth callback detected, processing...')
-        
-        try {
-          // Parse the URL to extract tokens/code
-          const url = new URL(event.url)
-          const fragment = url.hash.substring(1)
-          const params = new URLSearchParams(fragment || url.search)
-          
-          const accessToken = params.get('access_token')
-          const refreshToken = params.get('refresh_token')
-          const code = params.get('code')
-          
-          console.log('🔑 OAuth tokens found:', {
-            hasAccessToken: !!accessToken,
-            hasRefreshToken: !!refreshToken,
-            hasCode: !!code
-          })
-          
-          if (accessToken) {
-            // If we have access token, set the session directly
-            const { data: user, error } = await supabase.auth.getUser(accessToken)
-            if (user && !error) {
-              console.log('✅ User session established from access token')
-              // The auth state change will handle profile creation
-            }
-          } else if (code) {
-            // If we have a code, exchange it for session
-            console.log('🔄 Exchanging code for session...')
-            const { error } = await supabase.auth.exchangeCodeForSession(code)
-            if (!error) {
-              console.log('✅ Session established from code exchange')
-            } else {
-              console.error('❌ Code exchange failed:', error)
-            }
-          }
-          
-          // Always refresh session as fallback
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) {
-            console.log('✅ Session found after OAuth callback')
-            handleAuthStateChange(session)
-          } else {
-            console.log('⚠️ No session found after OAuth callback')
-          }
-        } catch (error) {
-          console.error('❌ Error processing OAuth callback:', error)
-          // Fallback: just refresh session
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) {
-            handleAuthStateChange(session)
-          }
-        }
-      }
-    }
-
-    // Set up deep link listener
-    const linkingSubscription = Linking.addEventListener('url', handleDeepLink)
-
     return () => {
       subscription.unsubscribe()
-      linkingSubscription?.remove()
     }
   }, [dispatch])
 
   const handleAuthStateChange = async (session: Session | null) => {
+    console.log('🔄 Processing auth state change...', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      email: session?.user?.email
+    })
+
     if (session?.user) {
       try {
-        // Fetch or create user profile
+        console.log('👤 User session found, fetching profile...')
+        
+        // Fetch existing user profile
         const { data: userProfile, error } = await supabase
           .from('users')
           .select('*')
@@ -159,201 +76,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .single()
 
         if (error && error.code === 'PGRST116') {
-          // User doesn't exist, could be new signup or existing auth user without profile
-          console.log('User profile not found - creating profile for authenticated user')
+          // User doesn't exist, create profile for new signup
+          console.log('🆕 User profile not found - creating new profile')
           
-          // Check if this is a Twitter user by looking at the auth metadata
-          const isTwitterUser = session.user.app_metadata?.provider === 'twitter'
-          const twitterData = session.user.user_metadata
+          // Generate username and display name from email
+          const emailUsername = session.user.email?.split('@')[0] || 'user'
+          const timestamp = Date.now().toString().slice(-4) // Last 4 digits of timestamp
+          const autoUsername = `${emailUsername}_${timestamp}`
+          const autoDisplayName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1)
           
-          console.log('Auth provider:', session.user.app_metadata?.provider)
-          console.log('User metadata:', twitterData)
-          
-          let profileData
-          
-          if (isTwitterUser && twitterData) {
-            // Create profile using Twitter data
-            console.log('🐦 Creating profile for Twitter user:', twitterData.user_name || twitterData.name)
-            
-            // Generate unique username for Twitter users
-            let baseUsername = twitterData.user_name || twitterData.preferred_username || twitterData.name?.toLowerCase().replace(/\s+/g, '_')
-            let finalUsername = `tw_${baseUsername}`
-            let counter = 1
-            
-            // Check username availability
-            while (true) {
-              const { data: existingUsername } = await supabase
-                .from('users')
-                .select('username')
-                .eq('username', finalUsername)
-                .single()
-              
-              if (!existingUsername) break
-              finalUsername = `tw_${baseUsername}_${counter}`
-              counter++
-            }
-            
-            profileData = {
-              id: session.user.id,
-              email: session.user.email || `${twitterData.user_name}@twitter.local`,
-              username: finalUsername,
-              display_name: twitterData.name || twitterData.user_name || 'Twitter User',
-              avatar: twitterData.avatar_url || twitterData.picture || '🐦',
-              bio: twitterData.description || `Twitter user @${twitterData.user_name}`,
-              snap_score: 0,
-              last_active: new Date().toISOString(),
-              is_online: true,
-              auth_provider: 'twitter',
-              social_accounts: {
-                twitter: {
-                  id: twitterData.provider_id || twitterData.sub,
-                  username: twitterData.user_name || twitterData.preferred_username,
-                  name: twitterData.name,
-                  verified: twitterData.verified || false,
-                  avatar_url: twitterData.avatar_url || twitterData.picture
-                }
-              },
-              settings: {
-                share_location: false,
-                allow_friend_requests: true,
-                show_online_status: true,
-                allow_message_from_strangers: false,
-                ghost_mode: false,
-                privacy_level: 'friends',
-                notifications: {
-                  push_enabled: true,
-                  location_updates: true,
-                  friend_requests: true,
-                  messages: true
-                }
-              },
-              stats: {
-                snaps_shared: 0,
-                friends_count: 0,
-                stories_posted: 0
-              }
-            }
-          } else {
-            // Create profile for email users
-            profileData = {
-              id: session.user.id,
-              email: session.user.email || '',
-              username: session.user.email?.split('@')[0] || `user_${session.user.id.substring(0, 8)}`,
-              display_name: session.user.email?.split('@')[0] || 'User',
-              avatar: '😊',
-              bio: '',
-              snap_score: 0,
-              last_active: new Date().toISOString(),
-              is_online: true,
-              auth_provider: 'email',
-              settings: {
-                share_location: false,
-                allow_friend_requests: true,
-                show_online_status: true,
-                allow_message_from_strangers: false,
-                ghost_mode: false,
-                privacy_level: 'friends',
-                notifications: {
-                  push_enabled: true,
-                  location_updates: true,
-                  friend_requests: true,
-                  messages: true
-                }
-              },
-              stats: {
-                snaps_shared: 0,
-                friends_count: 0,
-                stories_posted: 0
-              }
-            }
-          }
-          
-          // Create the user profile
-          try {
-            const { error: createError } = await supabase
-              .from('users')
-              .upsert(profileData, {
-                onConflict: 'id',
-                ignoreDuplicates: false
-              })
-
-            if (createError) {
-              console.error('Error creating/updating user profile:', createError)
-              // Set session but without user profile - user can complete profile later
-              dispatch(setAuth({ user: null, session }))
-            } else {
-              // Fetch the created/updated profile
-              const { data: newProfile } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single()
-              
-              dispatch(setAuth({ user: newProfile, session }))
-            }
-          } catch (profileCreateError) {
-            console.error('Error in profile creation:', profileCreateError)
-            dispatch(setAuth({ user: null, session }))
-          }
-        } else if (error) {
-          console.error('Error fetching user profile:', error)
-          dispatch(clearAuth())
-        } else {
-          dispatch(setAuth({ user: userProfile, session }))
-        }
-      } catch (error) {
-        console.error('Error handling auth state change:', error)
-        dispatch(clearAuth())
-      }
-    } else {
-      dispatch(clearAuth())
-    }
-  }
-
-  const signUp = async (email: string, password: string, username: string, displayName: string) => {
-    try {
-      dispatch(setLoading(true))
-
-      // Test connection first
-      const isConnected = await testSupabaseConnection()
-      if (!isConnected) {
-        return { error: 'Cannot connect to server. Please check your internet connection.' }
-      }
-
-      // Check if username is available
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('username')
-        .eq('username', username)
-        .single()
-
-      if (existingUser) {
-        return { error: 'Username is already taken' }
-      }
-
-      // Sign up with Supabase Auth
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
-      if (signUpError) {
-        if (signUpError.message.includes('network') || signUpError.message.includes('fetch')) {
-          return { error: 'Network error. Please check your internet connection and try again.' }
-        }
-        return { error: signUpError.message }
-      }
-
-      if (data.user) {
-        // Create or update user profile (UPSERT to handle existing users)
-        const { error: profileError } = await supabase
-          .from('users')
-          .upsert({
-            id: data.user.id,
-            email,
-            username,
-            display_name: displayName,
-            avatar: '😊',
+          const profileData = {
+            id: session.user.id,
+            email: session.user.email || '',
+            username: autoUsername,
+            display_name: autoDisplayName,
+            avatar: '👋',
             bio: '',
             snap_score: 0,
             last_active: new Date().toISOString(),
@@ -377,28 +114,163 @@ export function AuthProvider({ children }: AuthProviderProps) {
               friends_count: 0,
               stories_posted: 0
             }
-          }, {
-            onConflict: 'id',
-            ignoreDuplicates: false
+          }
+
+          console.log('💾 Creating new user profile...', { 
+            userId: session.user.id, 
+            email: session.user.email,
+            autoUsername,
+            autoDisplayName
           })
 
-        if (profileError) {
-          console.error('Error creating user profile:', profileError)
-          if (profileError.message.includes('network') || profileError.message.includes('fetch')) {
-            return { error: 'Network error while creating profile. Please try again.' }
-          }
-          return { error: 'Failed to create user profile' }
-        }
+          const { data: newProfile, error: createError } = await supabase
+            .from('users')
+            .insert(profileData)
+            .select()
+            .single()
 
+          if (createError) {
+            console.error('❌ Error creating user profile:', createError)
+            
+            // If it's a duplicate key error, the user already exists - try to fetch again
+            if (createError.code === '23505') {
+              console.log('🔄 User already exists, fetching existing profile...')
+              const { data: existingProfile, error: fetchError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single()
+              
+              if (!fetchError && existingProfile) {
+                console.log('👤 Found existing user profile:', {
+                  id: existingProfile.id,
+                  username: existingProfile.username,
+                  email: existingProfile.email
+                })
+                dispatch(setAuth({ user: existingProfile, session }))
+              } else {
+                dispatch(setAuth({ user: null, session }))
+              }
+            } else {
+              dispatch(setAuth({ user: null, session }))
+            }
+          } else {
+            console.log('✅ New user profile created successfully:', {
+              id: newProfile.id,
+              email: newProfile.email,
+              username: newProfile.username
+            })
+            dispatch(setAuth({ user: newProfile, session }))
+          }
+        } else if (error) {
+          console.error('❌ Error fetching user profile:', error)
+          dispatch(setAuth({ user: null, session }))
+        } else {
+          console.log('👤 Existing user profile found:', {
+            id: userProfile.id,
+            username: userProfile.username,
+            email: userProfile.email
+          })
+
+          // Update online status
+          await supabase
+            .from('users')
+            .update({ 
+              is_online: true,
+              last_active: new Date().toISOString()
+            })
+            .eq('id', userProfile.id)
+
+          dispatch(setAuth({ user: userProfile, session }))
+        }
+      } catch (error) {
+        console.error('❌ Error in auth state change:', error)
+        dispatch(setAuth({ user: null, session }))
+      }
+    } else {
+      console.log('🚪 No session found, clearing auth state')
+      dispatch(clearAuth())
+    }
+    dispatch(setLoading(false))
+  }
+
+  const signUp = async (email: string, password: string, username: string, displayName: string) => {
+    try {
+      console.log('🔐 Starting sign up process...', { email, username, displayName })
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testSupabaseConnection()
+      if (!isConnected) {
+        console.log('❌ Connection test failed')
+        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+      console.log('✅ Connection test passed')
+
+      // Check if username is available
+      console.log('🔍 Checking username availability...', { username })
+      const { data: existingUsername } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .single()
+
+      if (existingUsername) {
+        console.log('❌ Username already taken:', { username })
+        return { error: 'Username is already taken. Please choose a different one.' }
+      }
+      console.log('✅ Username is available')
+
+      // Create auth user
+      console.log('👤 Creating auth user...', { email })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            display_name: displayName
+          }
+        }
+      })
+
+      if (error) {
+        console.log('❌ Auth sign up error:', error)
+        if (error.message.includes('User already registered')) {
+          return { error: 'This email is already registered. Please sign in instead.' }
+        }
+        if (error.message.includes('Invalid email')) {
+          return { error: 'Please enter a valid email address.' }
+        }
+        if (error.message.includes('Password')) {
+          return { error: 'Password must be at least 6 characters long.' }
+        }
+        return { error: error.message }
+      }
+
+      console.log('📋 Sign up response:', {
+        hasUser: !!data.user,
+        hasSession: !!data.session,
+        userId: data.user?.id,
+        userEmail: data.user?.email,
+        needsConfirmation: !data.session && data.user && !data.user.email_confirmed_at
+      })
+
+      if (data.user) {
+        if (!data.session && !data.user.email_confirmed_at) {
+          console.log('📧 Email confirmation required')
+          return { error: 'Please check your email and click the confirmation link before signing in.' }
+        }
+        
+        // Profile will be created by handleAuthStateChange
+        console.log('✅ Sign up successful - profile will be created automatically')
         return {}
       }
 
-      return { error: 'Failed to create account' }
+      console.log('❌ Sign up failed - no user data returned')
+      return { error: 'Sign up failed. Please try again.' }
     } catch (error) {
-      console.error('Sign up error:', error)
-      if (error instanceof Error && (error.message.includes('network') || error.message.includes('fetch'))) {
-        return { error: 'Network error. Please check your internet connection.' }
-      }
+      console.error('❌ Sign up error:', error)
       return { error: 'An unexpected error occurred' }
     } finally {
       dispatch(setLoading(false))
@@ -415,19 +287,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { error: 'Cannot connect to server. Please check your internet connection.' }
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       })
 
       if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          return { error: 'Invalid email or password. Please check your credentials and try again.' }
+        }
+        if (error.message.includes('Email not confirmed')) {
+          return { error: 'Please check your email and click the confirmation link before signing in.' }
+        }
         if (error.message.includes('network') || error.message.includes('fetch')) {
           return { error: 'Network error. Please check your internet connection and try again.' }
         }
         return { error: error.message }
       }
 
-      return {}
+      if (data.user) {
+        console.log('✅ Sign in successful')
+        return {}
+      }
+
+      return { error: 'Sign in failed. Please try again.' }
     } catch (error) {
       console.error('Sign in error:', error)
       if (error instanceof Error && (error.message.includes('network') || error.message.includes('fetch'))) {
@@ -439,73 +322,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const signInWithTwitter = async () => {
+  const linkTwitterAccount = async () => {
     try {
       dispatch(setLoading(true))
 
-      // Test connection first
-      const isConnected = await testSupabaseConnection()
-      if (!isConnected) {
-        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      if (!user) {
+        return { error: 'You must be logged in to link your Twitter account.' }
       }
 
-      console.log('🐦 Starting Supabase Twitter OAuth flow...')
+      console.log('🐦 Starting Twitter account linking...')
 
-      // Use consistent redirect URI for Supabase OAuth
-      const redirectUri = __DEV__ 
-        ? 'tribefind://auth/callback'  // Use same URI for both dev and prod
-        : 'tribefind://auth/callback'
-      
-      console.log('🔗 Using redirect URI:', redirectUri)
-
-      // Start Supabase Twitter OAuth flow
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'twitter',
-        options: {
-          redirectTo: redirectUri,
-          skipBrowserRedirect: true // We'll handle the browser opening
-        }
+      // Use Supabase's link identity functionality
+      const { data, error } = await supabase.auth.linkIdentity({
+        provider: 'twitter'
       })
 
       if (error) {
-        console.error('❌ Twitter OAuth error:', error)
+        console.error('❌ Twitter linking error:', error)
         
         if (error.message.includes('Provider not found') || error.message.includes('twitter')) {
-          return { error: 'Twitter OAuth is not configured in Supabase. Please enable Twitter provider in Authentication > Providers and add your Twitter app credentials.' }
+          return { error: 'Twitter linking is not configured. Please contact support.' }
         }
-        if (error.message.includes('network') || error.message.includes('fetch')) {
-          return { error: 'Network error. Please check your internet connection and try again.' }
-        }
-        return { error: `Twitter OAuth failed: ${error.message}` }
+        return { error: `Failed to link Twitter account: ${error.message}` }
       }
 
-      if (!data?.url) {
-        console.warn('⚠️ No OAuth URL returned from Supabase')
-        return { error: 'Failed to generate Twitter authorization URL. Please check your Supabase Twitter OAuth configuration.' }
+      if (data?.url) {
+        console.log('🔗 Twitter linking URL generated - this will be handled by the system')
+        // The linking flow will be handled by Supabase automatically
+        return {}
       }
 
-      console.log('🔗 Twitter OAuth URL generated successfully')
-      console.log('🔗 Redirect URL configured:', redirectUri)
-      
-      // Open the OAuth URL in the system browser
-      try {
-        console.log('🌐 Opening Twitter OAuth in system browser...')
-        await Linking.openURL(data.url)
-        
-        console.log('🔄 OAuth initiated - waiting for deep link callback...')
-        console.log('Expected callback format: tribefind://auth/callback?...')
-        
-        return {} // Success - deep link handler will complete the flow
-      } catch (linkingError) {
-        console.error('❌ Failed to open OAuth URL:', linkingError)
-        return { error: 'Failed to open Twitter authorization page. Please check if you have a browser installed.' }
-      }
+      return { error: 'Failed to generate Twitter linking URL.' }
     } catch (error) {
-      console.error('Twitter sign in error:', error)
-      if (error instanceof Error && (error.message.includes('network') || error.message.includes('fetch'))) {
-        return { error: 'Network error. Please check your internet connection.' }
-      }
-      return { error: 'An unexpected error occurred during Twitter authentication' }
+      console.error('Twitter linking error:', error)
+      return { error: 'An unexpected error occurred while linking Twitter account' }
     } finally {
       dispatch(setLoading(false))
     }
@@ -543,12 +393,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const resetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      dispatch(setLoading(true))
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'tribefind://reset-password'
+      })
 
       if (error) {
-        if (error.message.includes('network') || error.message.includes('fetch')) {
-          return { error: 'Network error. Please check your internet connection.' }
-        }
         return { error: error.message }
       }
 
@@ -556,33 +407,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('Reset password error:', error)
       return { error: 'An unexpected error occurred' }
+    } finally {
+      dispatch(setLoading(false))
     }
   }
 
   const updateProfile = async (updates: Partial<User>) => {
     try {
+      dispatch(setLoading(true))
+
       if (!user) {
-        return { error: 'No user logged in' }
+        return { error: 'Not authenticated' }
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('users')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(updates)
         .eq('id', user.id)
+        .select()
+        .single()
 
       if (error) {
         return { error: error.message }
       }
 
-      // Update local state
-      dispatch(updateUser(updates))
+      if (data) {
+        dispatch(updateUser(data))
+      }
+
       return {}
     } catch (error) {
       console.error('Update profile error:', error)
       return { error: 'An unexpected error occurred' }
+    } finally {
+      dispatch(setLoading(false))
     }
   }
 
@@ -590,65 +448,61 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       if (!user) return
 
-      const { data: userProfile, error } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
         .single()
 
-      if (!error && userProfile) {
-        dispatch(updateUser(userProfile))
+      if (error) {
+        console.error('Error refreshing user:', error)
+        return
+      }
+
+      if (data) {
+        dispatch(updateUser(data))
       }
     } catch (error) {
       console.error('Refresh user error:', error)
     }
   }
 
-  const testConnection = async () => {
+  const testConnection = async (): Promise<boolean> => {
     return await testSupabaseConnection()
   }
 
-  const debugTwitterProvider = async () => {
+  const clearSession = async () => {
     try {
-      console.log('🔍 Testing Twitter provider configuration...')
-      
-      // Try to initiate OAuth to see if provider is configured
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'twitter',
-        options: {
-          redirectTo: 'tribefind://auth/twitter',
-          skipBrowserRedirect: true // Just test, don't actually redirect
-        },
-      })
-      
+      console.log('🗑️ Clearing all sessions...')
+      dispatch(setLoading(true))
+
+      const { error } = await supabase.auth.signOut({ scope: 'global' })
+
       if (error) {
-        console.error('❌ Twitter provider test failed:', error.message)
-        return false
+        console.error('❌ Error clearing session:', error)
+        return { error: error.message }
       }
-      
-      if (data?.url) {
-        console.log('✅ Twitter provider is properly configured')
-        return true
-      }
-      
-      console.warn('⚠️ Twitter provider test returned no URL')
-      return false
+
+      console.log('✅ All sessions cleared')
+      return {}
     } catch (error) {
-      console.error('❌ Twitter provider test error:', error)
-      return false
+      console.error('Clear session error:', error)
+      return { error: 'An unexpected error occurred' }
+    } finally {
+      dispatch(setLoading(false))
     }
   }
 
   const value = {
     signUp,
     signIn,
-    signInWithTwitter,
     signOut,
     resetPassword,
     updateProfile,
     refreshUser,
     testConnection,
-    debugTwitterProvider,
+    linkTwitterAccount,
+    clearSession,
   }
 
   return (

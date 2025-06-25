@@ -25,7 +25,7 @@ export default function AuthScreen() {
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signIn, signUp, signInWithTwitter } = useAuth()
+  const { signIn, signUp, clearSession } = useAuth()
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -58,71 +58,46 @@ export default function AuthScreen() {
     }
   }
 
-  const handleTwitterAuth = async () => {
-    setLoading(true)
-
-    try {
-      const result = await signInWithTwitter()
-
-      if (result.error) {
-        Alert.alert('Twitter Authentication Error', result.error)
-      }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred during Twitter authentication')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <LinearGradient
-      colors={['#6366f1', '#8b5cf6', '#a855f7', '#c084fc']}
+      colors={['#667eea', '#764ba2']}
       style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
     >
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoid}
+          style={styles.keyboardAvoidingView}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
             {/* Header Section */}
             <View style={styles.header}>
-              <View style={styles.logoContainer}>
-                <Text style={styles.logoEmoji}>🎯</Text>
-                <View style={styles.logoTextContainer}>
-                  <Text style={styles.logoText}>TribeFind</Text>
-                  <Text style={styles.logoSubtext}>Find Your Tribe</Text>
-                </View>
-              </View>
-              
-              <View style={styles.welcomeContainer}>
-                <Text style={styles.welcomeTitle}>
-                  {isSignUp ? 'Join the Tribe' : 'Welcome Back'}
-                </Text>
-                <Text style={styles.welcomeSubtitle}>
-                  {isSignUp 
-                    ? 'Connect with people who share your passions'
-                    : 'Ready to discover your tribe?'
-                  }
-                </Text>
-              </View>
+              <Text style={styles.appTitle}>TribeFind</Text>
+              <Text style={styles.subtitle}>
+                {isSignUp ? 'Join your tribe' : 'Welcome back'}
+              </Text>
+              <Text style={styles.description}>
+                Discover and connect with people who share your interests and activities
+              </Text>
             </View>
 
             {/* Form Section */}
             <View style={styles.formContainer}>
               <View style={styles.form}>
+                <Text style={styles.formTitle}>
+                  {isSignUp ? 'Create Account' : 'Sign In'}
+                </Text>
+
+                {/* Sign Up Fields */}
                 {isSignUp && (
                   <>
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}>Username</Text>
                       <TextInput
                         style={styles.input}
-                        placeholder="Choose your username"
+                        placeholder="Choose a unique username"
                         placeholderTextColor="#A0A0A0"
                         value={username}
                         onChangeText={setUsername}
@@ -130,12 +105,12 @@ export default function AuthScreen() {
                         autoCorrect={false}
                       />
                     </View>
-                    
+
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}>Display Name</Text>
                       <TextInput
                         style={styles.input}
-                        placeholder="What should we call you?"
+                        placeholder="How should we call you?"
                         placeholderTextColor="#A0A0A0"
                         value={displayName}
                         onChangeText={setDisplayName}
@@ -144,26 +119,28 @@ export default function AuthScreen() {
                     </View>
                   </>
                 )}
-                
+
+                {/* Email Field */}
                 <View style={styles.inputContainer}>
                   <Text style={styles.inputLabel}>Email</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="your@email.com"
+                    placeholder="Enter your email address"
                     placeholderTextColor="#A0A0A0"
                     value={email}
                     onChangeText={setEmail}
-                    autoCapitalize="none"
                     keyboardType="email-address"
+                    autoCapitalize="none"
                     autoCorrect={false}
                   />
                 </View>
-                
+
+                {/* Password Field */}
                 <View style={styles.inputContainer}>
                   <Text style={styles.inputLabel}>Password</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Create a secure password"
+                    placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
                     placeholderTextColor="#A0A0A0"
                     value={password}
                     onChangeText={setPassword}
@@ -172,6 +149,7 @@ export default function AuthScreen() {
                   />
                 </View>
 
+                {/* Submit Button */}
                 <TouchableOpacity
                   style={[styles.authButton, loading && styles.authButtonDisabled]}
                   onPress={handleAuth}
@@ -194,27 +172,7 @@ export default function AuthScreen() {
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* Divider */}
-                <View style={styles.dividerContainer}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                {/* Twitter Sign In Button */}
-                <TouchableOpacity
-                  style={[styles.twitterButton, loading && styles.authButtonDisabled]}
-                  onPress={handleTwitterAuth}
-                  disabled={loading}
-                >
-                  <View style={styles.twitterButtonContent}>
-                    <Text style={styles.twitterIcon}>🐦</Text>
-                    <Text style={styles.twitterButtonText}>
-                      {loading ? 'Connecting...' : 'Continue with Twitter'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
+                {/* Switch Auth Mode */}
                 <TouchableOpacity
                   style={styles.switchButton}
                   onPress={() => setIsSignUp(!isSignUp)}
@@ -227,6 +185,24 @@ export default function AuthScreen() {
                       {isSignUp ? 'Sign In' : 'Join Now'}
                     </Text>
                   </Text>
+                </TouchableOpacity>
+
+                {/* Note about social linking */}
+                <Text style={styles.socialNote}>
+                  💡 You can link your social accounts after signing in
+                </Text>
+
+                {/* Clear Session Button (for debugging/fresh start) */}
+                <TouchableOpacity
+                  style={styles.clearSessionButton}
+                  onPress={async () => {
+                    const result = await clearSession()
+                    if (!result.error) {
+                      Alert.alert('Session Cleared', 'All sessions have been cleared. You can now create a new account or sign in fresh.')
+                    }
+                  }}
+                >
+                  <Text style={styles.clearSessionText}>Clear All Sessions</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -254,125 +230,99 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  keyboardAvoid: {
+  keyboardAvoidingView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
-    marginTop: 20,
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  logoEmoji: {
-    fontSize: 48,
-    marginRight: 12,
-  },
-  logoTextContainer: {
-    alignItems: 'flex-start',
-  },
-  logoText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  logoSubtext: {
-    fontSize: 16,
-    color: '#F0F0F0',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  welcomeContainer: {
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: '#F0F0F0',
-    textAlign: 'center',
-    lineHeight: 22,
+    paddingTop: 40,
+    paddingBottom: 30,
     paddingHorizontal: 20,
   },
+  appTitle: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  subtitle: {
+    fontSize: 20,
+    color: '#E0E7FF',
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  description: {
+    fontSize: 16,
+    color: '#C7D2FE',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 280,
+  },
   formContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  form: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 24,
     padding: 28,
-    marginHorizontal: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  form: {
-    width: '100%',
+  formTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 24,
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 20,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#374151',
     marginBottom: 8,
-    marginLeft: 4,
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
     color: '#1F2937',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   authButton: {
-    marginTop: 12,
-    marginBottom: 24,
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    marginBottom: 16,
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 5,
   },
   authButtonDisabled: {
     opacity: 0.7,
   },
   authButtonGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
   },
   authButtonText: {
     color: '#FFFFFF',
@@ -386,87 +336,60 @@ const styles = StyleSheet.create({
   switchButton: {
     alignItems: 'center',
     paddingVertical: 12,
+    marginBottom: 16,
   },
   switchText: {
-    color: '#6B7280',
     fontSize: 16,
-    textAlign: 'center',
+    color: '#6B7280',
   },
   switchTextBold: {
-    color: '#8b5cf6',
     fontWeight: 'bold',
+    color: '#8B5CF6',
+  },
+  socialNote: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   footer: {
-    marginTop: 40,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   aiFooter: {
     alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    marginHorizontal: 20,
+    marginTop: 20,
   },
   aiFooterText: {
     fontSize: 14,
+    color: '#E0E7FF',
     fontWeight: '600',
-    color: '#FFFFFF',
     marginBottom: 4,
-    textAlign: 'center',
   },
   engineeringText: {
-    fontSize: 13,
-    color: '#F0F0F0',
+    fontSize: 12,
+    color: '#C7D2FE',
     marginBottom: 2,
-    textAlign: 'center',
   },
   taglineText: {
-    fontSize: 12,
-    color: '#E0E0E0',
+    fontSize: 11,
+    color: '#A5B4FC',
     fontStyle: 'italic',
-    textAlign: 'center',
   },
-  dividerContainer: {
-    flexDirection: 'row',
+  clearSessionButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
     alignItems: 'center',
-    marginVertical: 20,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: '#6B7280',
+  clearSessionText: {
+    fontSize: 12,
+    color: '#EF4444',
     fontWeight: '500',
-  },
-  twitterButton: {
-    backgroundColor: '#1DA1F2',
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  twitterButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-  },
-  twitterIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  twitterButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 }) 
