@@ -52,7 +52,10 @@ const UserSearchScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get users with shared activities (simplified query)
+      // Get users with shared activities (show recently active users)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       const { data: users, error } = await supabase
         .from('users')
         .select(`
@@ -65,13 +68,16 @@ const UserSearchScreen: React.FC = () => {
           is_online
         `)
         .neq('id', user.id) // Exclude current user
-        .eq('is_online', true)
+        .gte('last_active', sevenDaysAgo.toISOString()) // Show users active in last 7 days
+        .order('last_active', { ascending: false }) // Most recently active first
         .limit(20);
 
       if (error) {
         console.error('Error loading nearby users:', error);
         return;
       }
+
+      console.log(`✅ Found ${users?.length || 0} recently active users`);
 
       // Get friendship status for each user
       const usersWithStatus = await Promise.all(
@@ -87,6 +93,7 @@ const UserSearchScreen: React.FC = () => {
         })
       );
 
+      console.log(`👥 Processed ${usersWithStatus.length} users with friendship status`);
       setNearbyUsers(usersWithStatus);
     } catch (error) {
       console.error('Error loading nearby users:', error);
@@ -125,6 +132,8 @@ const UserSearchScreen: React.FC = () => {
         return;
       }
 
+      console.log(`🔍 Search for "${query}" found ${users?.length || 0} users`);
+
       // Get friendship status for each user
       const usersWithStatus = await Promise.all(
         (users || []).map(async (otherUser) => {
@@ -139,6 +148,7 @@ const UserSearchScreen: React.FC = () => {
         })
       );
 
+      console.log(`🔍 Search results processed: ${usersWithStatus.length} users`);
       setSearchResults(usersWithStatus);
     } catch (error) {
       console.error('Error searching users:', error);
@@ -388,12 +398,12 @@ const UserSearchScreen: React.FC = () => {
         color="#9CA3AF" 
       />
       <Text style={styles.emptyTitle}>
-        {searchMode === 'search' ? 'No users found' : 'No nearby tribe members'}
+        {searchMode === 'search' ? 'No users found' : 'No recent tribe members'}
       </Text>
       <Text style={styles.emptySubtitle}>
         {searchMode === 'search' 
           ? 'Try searching for a different username or name'
-          : 'Check back later for new tribe members in your area'
+          : 'No users have been active in the last 7 days. Try using the search to find specific users.'
         }
       </Text>
     </View>
@@ -440,7 +450,7 @@ const UserSearchScreen: React.FC = () => {
           <Text style={styles.modeText}>
             {searchMode === 'search' 
               ? `Search results for "${searchQuery}"`
-              : 'Nearby tribe members'
+              : 'Recently active users (last 7 days)'
             }
           </Text>
         </View>
