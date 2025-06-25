@@ -1,0 +1,13 @@
+# TribeFind Environment Variables
+# Copy this to .env and fill in your real values
+
+# Supabase Configuration
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# Note: Twitter OAuth credentials should be configured in your Supabase Dashboard
+# Go to Authentication > Providers > Twitter and add your Twitter app credentials there
+# Do NOT add Twitter credentials as environment variables when using Supabase OAuth
+
+# Optional: Development flags
+EXPO_PUBLIC_ENV=development
