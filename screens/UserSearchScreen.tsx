@@ -291,7 +291,7 @@ const UserSearchScreen: React.FC = () => {
     if (!user) return;
 
     try {
-      // Optimistically update UI immediately
+      // Optimistically update UI immediately for better UX
       const updateUserStatus = (users: UserResult[]) => {
         return users.map(u => 
           u.id === targetUserId 
@@ -318,7 +318,14 @@ const UserSearchScreen: React.FC = () => {
         throw error;
       }
 
-      Alert.alert('Success', `You are now friends with ${targetUsername}! 🎉`);
+      // Show celebratory tribe-mate confirmation
+      Alert.alert(
+        '🎉 Welcome to the Tribe!', 
+        `You and ${targetUsername} are now tribe-mates! You can discover activities together, share moments, and explore new interests. Start your journey of mutual discovery! 🚀`,
+        [
+          { text: 'Discover Together!', style: 'default' }
+        ]
+      );
       
       // Refresh the data after a short delay to ensure database consistency
       setTimeout(() => {
@@ -378,9 +385,9 @@ const UserSearchScreen: React.FC = () => {
       switch (item.friendship_status) {
         case 'accepted':
           return (
-            <View style={styles.friendButton}>
-              <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-              <Text style={styles.friendButtonText}>Friends</Text>
+            <View style={styles.tribeMateButton}>
+              <Ionicons name="people" size={16} color="#8B5CF6" />
+              <Text style={styles.tribeMateButtonText}>Tribe-mate</Text>
             </View>
           );
         case 'pending_sent':
@@ -727,6 +734,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#10B981',
     fontWeight: '600',
+    marginLeft: 4,
+  },
+  tribeMateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+  },
+  tribeMateButtonText: {
+    fontSize: 12,
+    color: '#8B5CF6',
+    fontWeight: '700',
     marginLeft: 4,
   },
   emptyState: {
