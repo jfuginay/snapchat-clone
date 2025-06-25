@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install TribeFind - iOS</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .tagline {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .find-framework {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .find-letters {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .find-letter {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .letter {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        .install-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 18px 40px;
+            font-size: 1.3rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s ease;
+        }
+        .install-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
+        .version-info {
+            margin: 20px 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #FFD700;
+        }
+        .step {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        .step::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .warning {
+            background: rgba(255, 152, 0, 0.2);
+            border: 1px solid rgba(255, 152, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .find-letters {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌟 TribeFind</h1>
+        <p class="tagline">Discover Your Tribe Through Shared Interests</p>
+        
+        <div class="find-framework">
+            <h2>🎯 The FIND Framework</h2>
+            <div class="find-letters">
+                <div class="find-letter">
+                    <div class="letter">F</div>
+                    <div>Find people with shared interests</div>
+                </div>
+                <div class="find-letter">
+                    <div class="letter">I</div>
+                    <div>Interest discovery through activities</div>
+                </div>
+                <div class="find-letter">
+                    <div class="letter">N</div>
+                    <div>Nurture meaningful connections</div>
+                </div>
+                <div class="find-letter">
+                    <div class="letter">D</div>
+                    <div>Discovery of new experiences</div>
+                </div>
+            </div>
+        </div>
+
+        <a href="https://expo.dev/artifacts/eas/njxvco8Eh1rfhkwfDTqKtf.ipa" class="install-btn">
+            📱 Install TribeFind for iOS
+        </a>
+
+        <div class="version-info">
+            <strong>Version:</strong> 1.2.0 | <strong>Build:</strong> 2<br>
+            <strong>Latest Build:</strong> June 25, 2025
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Installation Instructions</h3>
+            <div class="step">Tap the "Install TribeFind for iOS" button above</div>
+            <div class="step">Your iPhone will download the .ipa file</div>
+            <div class="step">Go to Settings → General → Device Management</div>
+            <div class="step">Trust the "Grant J Wylie" developer profile</div>
+            <div class="step">Find TribeFind on your home screen and open it!</div>
+        </div>
+
+        <div class="warning">
+            ⚠️ <strong>Note:</strong> This is a preview/test build. You may need to trust the developer certificate in iOS Settings after installation.
+        </div>
+
+        <div class="footer">
+            <p><strong>Built with AI-First Principles at EnginDearing.soy</strong></p>
+            <p>🎯 <strong>TribeFind</strong> - Where innovation meets community</p>
+            <p><strong>FIND:</strong> Find Interest Nurture Discovery</p>
+            <p><em>Discover your tribe through shared passions and AI-powered connections</em> ❤️</p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive elements
+        document.querySelector('.install-btn').addEventListener('click', function() {
+            // Track click event
+            console.log('TribeFind iOS install initiated');
+            
+            // Show a brief loading state
+            this.innerHTML = '⬇️ Downloading...';
+            setTimeout(() => {
+                this.innerHTML = '📱 Install TribeFind for iOS';
+            }, 2000);
+        });
+
+        // Add some fun animations
+        document.addEventListener('DOMContentLoaded', function() {
+            const letters = document.querySelectorAll('.find-letter');
+            letters.forEach((letter, index) => {
+                letter.style.opacity = '0';
+                letter.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    letter.style.transition = 'all 0.5s ease';
+                    letter.style.opacity = '1';
+                    letter.style.transform = 'translateY(0)';
+                }, index * 200);
+            });
+        });
+    </script>
+</body>
+</html> 

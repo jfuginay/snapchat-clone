@@ -1,0 +1,4 @@
+# Quick Android Emulator Commands (run after Android Studio setup):
+emulator -list-avds  # List available emulators
+emulator @TribeFind_Test_Device &  # Start emulator in background
+npx expo start --android  # Run TribeFind on Android

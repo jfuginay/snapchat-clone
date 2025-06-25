@@ -7,20 +7,30 @@ import {
   TouchableOpacity, 
   ScrollView,
   RefreshControl,
-  Alert
+  Alert,
+  Modal,
+  Image,
+  ActionSheetIOS,
+  Platform,
+  ActivityIndicator
 } from 'react-native'
 import { useAppSelector } from '../store'
 import { useAuth } from '../services/AuthService'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { supabase } from '../lib/supabase'
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system'
+import { Ionicons } from '@expo/vector-icons'
 
 export default function ProfileScreen() {
   const { user } = useAppSelector((state) => state.auth)
-  const { signOut, linkTwitterAccount } = useAuth()
+  const { signOut, linkTwitterAccount, updateProfile } = useAuth()
   const navigation = useNavigation()
   const [refreshing, setRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [twitterLinking, setTwitterLinking] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false)
   const [realStats, setRealStats] = useState({
     snaps_shared: 0,
     friends_count: 0,
@@ -144,6 +154,205 @@ export default function ProfileScreen() {
     }
   }
 
+  /**
+   * Handle avatar press - show options to change profile picture
+   */
+  const handleAvatarPress = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Gallery'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            takePhoto()
+          } else if (buttonIndex === 2) {
+            pickFromGallery()
+          }
+        }
+      )
+    } else {
+      // For Android, show modal
+      setAvatarModalVisible(true)
+    }
+  }
+
+  /**
+   * Take a new photo for avatar
+   */
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Camera permission is required to take photos')
+        return
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1], // Square aspect ratio for avatar
+        quality: 0.8,
+      })
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadAvatar(result.assets[0].uri)
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error)
+      Alert.alert('Error', 'Failed to take photo. Please try again.')
+    }
+  }
+
+  /**
+   * Pick image from gallery for avatar
+   */
+  const pickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Gallery permission is required to select photos')
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1], // Square aspect ratio for avatar
+        quality: 0.8,
+      })
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadAvatar(result.assets[0].uri)
+      }
+    } catch (error) {
+      console.error('Error picking from gallery:', error)
+      Alert.alert('Error', 'Failed to select photo. Please try again.')
+    }
+  }
+
+  /**
+   * Upload avatar to Supabase and update user profile
+   */
+  const uploadAvatar = async (imageUri: string) => {
+    if (!user) return
+
+    try {
+      setUploadingAvatar(true)
+
+      // Create filename for avatar
+      const timestamp = Date.now()
+      const filename = `${user.id}/avatar_${timestamp}.jpg`
+
+      console.log('Uploading avatar to path:', filename)
+
+      // Read file as base64
+      const base64Data = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      })
+
+      // Convert base64 to Uint8Array for Supabase
+      const byteCharacters = atob(base64Data)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const uint8Array = new Uint8Array(byteNumbers)
+
+      // Upload to Supabase storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filename, uint8Array, {
+          contentType: 'image/jpeg',
+          upsert: false
+        })
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`)
+      }
+
+      console.log('Avatar upload successful:', uploadData)
+
+      // Get signed URL for the avatar
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('photos')
+        .createSignedUrl(filename, 60 * 60 * 24 * 365) // 1 year expiry
+
+      let avatarUrl: string
+
+      if (signedUrlError) {
+        console.error('Signed URL error:', signedUrlError)
+        // Fallback to public URL
+        const { data: urlData } = supabase.storage
+          .from('photos')
+          .getPublicUrl(filename)
+        avatarUrl = urlData.publicUrl
+      } else {
+        avatarUrl = signedUrlData.signedUrl
+      }
+
+      // Update user profile with new avatar
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar: avatarUrl })
+        .eq('id', user.id)
+
+      if (updateError) {
+        throw new Error(`Profile update failed: ${updateError.message}`)
+      }
+
+      // Update local auth state
+      await updateProfile({ avatar: avatarUrl })
+
+      // Update local state
+      setUpdatedUser(prev => ({ ...prev, avatar: avatarUrl } as any))
+
+      Alert.alert('Success!', 'Profile picture updated successfully!')
+
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error)
+      Alert.alert('Upload Failed', error.message || 'Failed to update profile picture. Please try again.')
+    } finally {
+      setUploadingAvatar(false)
+      setAvatarModalVisible(false)
+    }
+  }
+
+  /**
+   * Render avatar with upload functionality
+   */
+  const renderAvatar = () => {
+    const currentUser = updatedUser || user
+    const avatarSource = currentUser?.avatar && currentUser.avatar.startsWith('http') 
+      ? { uri: currentUser.avatar }
+      : null
+
+    return (
+      <TouchableOpacity 
+        style={styles.avatarContainerWrapper} 
+        onPress={handleAvatarPress}
+        disabled={uploadingAvatar}
+      >
+        {uploadingAvatar ? (
+          <View style={styles.avatarLoading}>
+            <ActivityIndicator size="large" color="#6366f1" />
+            <Text style={styles.uploadingText}>Uploading...</Text>
+          </View>
+        ) : avatarSource ? (
+          <Image source={avatarSource} style={styles.avatarImage} />
+        ) : (
+          <Text style={styles.avatar}>{currentUser?.avatar}</Text>
+        )}
+        
+        {/* Camera icon overlay */}
+        <View style={styles.cameraIconOverlay}>
+          <Ionicons name="camera" size={16} color="white" />
+        </View>
+      </TouchableOpacity>
+    )
+  }
+
   if (!user) {
     return null
   }
@@ -164,8 +373,8 @@ export default function ProfileScreen() {
         }
       >
         <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatar}>{displayUser.avatar}</Text>
+          <View style={styles.avatarContainerWrapper}>
+            {renderAvatar()}
           </View>
           <Text style={styles.displayName}>{displayUser.display_name}</Text>
           <Text style={styles.username}>@{displayUser.username}</Text>
@@ -175,7 +384,7 @@ export default function ProfileScreen() {
           {hasTwitterLinked && (
             <View style={styles.twitterBadge}>
               <Text style={styles.twitterBadgeText}>
-                🐦 Linked to @{displayUser.social_accounts.twitter.username}
+                🐦 Linked to @{displayUser.social_accounts?.twitter?.username}
               </Text>
             </View>
           )}
@@ -236,7 +445,7 @@ export default function ProfileScreen() {
           <TouchableOpacity 
             style={[styles.settingItem, twitterLinking && styles.settingItemDisabled]} 
             onPress={handleTwitterLink}
-            disabled={twitterLinking || hasTwitterLinked}
+            disabled={twitterLinking || Boolean(hasTwitterLinked)}
           >
             <Text style={styles.settingIcon}>🐦</Text>
             <View style={styles.settingContent}>
@@ -245,7 +454,7 @@ export default function ProfileScreen() {
               </Text>
               <Text style={styles.settingSubtitle}>
                 {hasTwitterLinked 
-                  ? `Connected to @${displayUser.social_accounts.twitter.username}` 
+                  ? `Connected to @${displayUser.social_accounts?.twitter?.username}` 
                   : 'Connect your Twitter account'
                 }
               </Text>
@@ -287,8 +496,8 @@ export default function ProfileScreen() {
               <View style={styles.settingContent}>
                 <Text style={styles.settingTitle}>Twitter</Text>
                 <Text style={styles.settingSubtitle}>
-                  @{displayUser.social_accounts.twitter.username}
-                  {displayUser.social_accounts.twitter.verified && ' ✓'}
+                  @{displayUser.social_accounts?.twitter?.username}
+                  {displayUser.social_accounts?.twitter?.verified && ' ✓'}
                 </Text>
               </View>
               <View style={styles.connectedBadge}>
@@ -307,6 +516,40 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
+        {/* Android Avatar Modal */}
+        {Platform.OS === 'android' && (
+          <Modal
+            visible={avatarModalVisible}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setAvatarModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Change Profile Picture</Text>
+                
+                <TouchableOpacity style={styles.modalOption} onPress={takePhoto}>
+                  <Ionicons name="camera" size={24} color="#6366f1" />
+                  <Text style={styles.modalOptionText}>Take Photo</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.modalOption} onPress={pickFromGallery}>
+                  <Ionicons name="images" size={24} color="#6366f1" />
+                  <Text style={styles.modalOptionText}>Choose from Gallery</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.modalOption, styles.cancelOption]} 
+                  onPress={() => setAvatarModalVisible(false)}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                  <Text style={[styles.modalOptionText, styles.cancelText]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
@@ -327,7 +570,7 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 20,
   },
-  avatarContainer: {
+  avatarContainerWrapper: {
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -489,5 +732,75 @@ const styles = StyleSheet.create({
   },
   settingArrowLinked: {
     color: '#000',
+  },
+  avatarLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#6366f1',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+  },
+  cameraIconOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 20,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  modalOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+    marginLeft: 10,
+  },
+  cancelOption: {
+    backgroundColor: '#f0f0f0',
+  },
+  cancelText: {
+    color: '#666',
   },
 }) 
