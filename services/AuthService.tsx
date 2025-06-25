@@ -85,7 +85,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           try {
             const { error: createError } = await supabase
               .from('users')
-              .insert({
+              .upsert({
                 id: session.user.id,
                 email: session.user.email || '',
                 username: session.user.email?.split('@')[0] || `user_${session.user.id.substring(0, 8)}`,
@@ -114,31 +114,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
                   friends_count: 0,
                   stories_posted: 0
                 }
+              }, {
+                onConflict: 'id',
+                ignoreDuplicates: false
               })
 
             if (createError) {
-              console.error('Error creating user profile:', createError)
-              
-              // Check if error is due to duplicate (profile was just created by signUp)
-              if (createError.code === '23505') {
-                console.log('Profile already exists (created by signUp), fetching it...')
-                const { data: existingProfile } = await supabase
-                  .from('users')
-                  .select('*')
-                  .eq('id', session.user.id)
-                  .single()
-                
-                if (existingProfile) {
-                  dispatch(setAuth({ user: existingProfile, session }))
-                } else {
-                  dispatch(setAuth({ user: null, session }))
-                }
-              } else {
-                // Other error, still set session but without user profile
-                dispatch(setAuth({ user: null, session }))
-              }
+              console.error('Error creating/updating user profile:', createError)
+              // Set session but without user profile - user can complete profile later
+              dispatch(setAuth({ user: null, session }))
             } else {
-              // Fetch the newly created profile
+              // Fetch the created/updated profile
               const { data: newProfile } = await supabase
                 .from('users')
                 .select('*')
@@ -201,10 +187,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (data.user) {
-        // Create user profile
+        // Create or update user profile (UPSERT to handle existing users)
         const { error: profileError } = await supabase
           .from('users')
-          .insert({
+          .upsert({
             id: data.user.id,
             email,
             username,
@@ -233,6 +219,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
               friends_count: 0,
               stories_posted: 0
             }
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
           })
 
         if (profileError) {
