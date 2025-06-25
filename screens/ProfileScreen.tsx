@@ -6,7 +6,8 @@ import {
   SafeAreaView, 
   TouchableOpacity, 
   ScrollView,
-  RefreshControl 
+  RefreshControl,
+  Alert
 } from 'react-native'
 import { useAppSelector } from '../store'
 import { useAuth } from '../services/AuthService'
@@ -15,10 +16,11 @@ import { supabase } from '../lib/supabase'
 
 export default function ProfileScreen() {
   const { user } = useAppSelector((state) => state.auth)
-  const { signOut } = useAuth()
+  const { signOut, linkTwitterAccount } = useAuth()
   const navigation = useNavigation()
   const [refreshing, setRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [twitterLinking, setTwitterLinking] = useState(false)
   const [realStats, setRealStats] = useState({
     snaps_shared: 0,
     friends_count: 0,
@@ -116,11 +118,34 @@ export default function ProfileScreen() {
     navigation.navigate('HomeLocationSettings' as never)
   }
 
+  const handleTwitterLink = async () => {
+    try {
+      setTwitterLinking(true)
+
+      const result = await linkTwitterAccount()
+
+      if (result.error) {
+        Alert.alert('Twitter Linking Error', result.error)
+      } else {
+        Alert.alert(
+          'Twitter Linking Started',
+          'Your browser will open to link your Twitter account. After authorization, return to the app.',
+          [{ text: 'OK' }]
+        )
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred while linking Twitter account')
+    } finally {
+      setTwitterLinking(false)
+    }
+  }
+
   if (!user) {
     return null
   }
 
   const displayUser = updatedUser || user
+  const hasTwitterLinked = displayUser?.social_accounts?.twitter?.id
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,6 +166,15 @@ export default function ProfileScreen() {
           <Text style={styles.displayName}>{displayUser.display_name}</Text>
           <Text style={styles.username}>@{displayUser.username}</Text>
           <Text style={styles.bio}>{displayUser.bio || 'No bio yet'}</Text>
+          
+          {/* Twitter Account Status */}
+          {hasTwitterLinked && (
+            <View style={styles.twitterBadge}>
+              <Text style={styles.twitterBadgeText}>
+                🐦 Linked to @{displayUser.social_accounts.twitter.username}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.stats}>
@@ -185,6 +219,32 @@ export default function ProfileScreen() {
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
 
+          {/* Twitter Account Linking */}
+          <TouchableOpacity 
+            style={[styles.settingItem, twitterLinking && styles.settingItemDisabled]} 
+            onPress={handleTwitterLink}
+            disabled={twitterLinking || hasTwitterLinked}
+          >
+            <Text style={styles.settingIcon}>🐦</Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>
+                {hasTwitterLinked ? 'Twitter Account' : 'Link Twitter'}
+              </Text>
+              <Text style={styles.settingSubtitle}>
+                {hasTwitterLinked 
+                  ? `Connected to @${displayUser.social_accounts.twitter.username}` 
+                  : 'Connect your Twitter account'
+                }
+              </Text>
+            </View>
+            <Text style={[
+              styles.settingArrow, 
+              hasTwitterLinked && styles.settingArrowLinked
+            ]}>
+              {twitterLinking ? '⏳' : hasTwitterLinked ? '✅' : '›'}
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>👥</Text>
             <View style={styles.settingContent}>
@@ -202,6 +262,33 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Social Accounts Section */}
+        <View style={styles.settings}>
+          <Text style={styles.sectionTitle}>Connected Accounts</Text>
+          
+          {hasTwitterLinked ? (
+            <View style={styles.connectedAccountItem}>
+              <Text style={styles.settingIcon}>🐦</Text>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>Twitter</Text>
+                <Text style={styles.settingSubtitle}>
+                  @{displayUser.social_accounts.twitter.username}
+                  {displayUser.social_accounts.twitter.verified && ' ✓'}
+                </Text>
+              </View>
+              <View style={styles.connectedBadge}>
+                <Text style={styles.connectedText}>Connected</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.noAccountsItem}>
+              <Text style={styles.noAccountsText}>
+                💡 Link your social accounts to expand your network and discover more tribe members
+              </Text>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
@@ -344,5 +431,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  twitterBadge: {
+    backgroundColor: '#000',
+    padding: 5,
+    borderRadius: 5,
+    marginTop: 5,
+  },
+  twitterBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  connectedAccountItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  connectedBadge: {
+    backgroundColor: '#000',
+    padding: 5,
+    borderRadius: 5,
+    marginLeft: 10,
+  },
+  connectedText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  noAccountsItem: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noAccountsText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+  },
+  settingItemDisabled: {
+    backgroundColor: '#f0f0f0',
+  },
+  settingArrowLinked: {
+    color: '#000',
   },
 }) 

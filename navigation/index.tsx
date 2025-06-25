@@ -4,17 +4,17 @@ import { createStackNavigator } from '@react-navigation/stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store'
+import { View, Text } from 'react-native'
 
 // Import screens
 import AuthScreen from '../screens/AuthScreen'
-import ProfileSetupScreen from '../screens/ProfileSetupScreen'
+import HomeScreen from '../screens/HomeScreen'
 import CameraScreen from '../screens/CameraScreen'
 import MapScreen from '../screens/MapScreen'
 import ProfileScreen from '../screens/ProfileScreen'
-import HomeScreen from '../screens/HomeScreen'
-import UserSearchScreen from '../screens/UserSearchScreen'
 import LocationSettingsScreen from '../screens/LocationSettingsScreen'
 import HomeLocationSettingsScreen from '../screens/HomeLocationSettingsScreen'
+import UserSearchScreen from '../screens/UserSearchScreen'
 
 const Stack = createStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -79,94 +79,54 @@ function TabNavigator() {
 export default function Navigation() {
   const { isAuthenticated, loading, user } = useAppSelector((state) => state.auth)
 
-  /**
-   * Check if user profile setup is complete
-   */
-  const isProfileComplete = (user: any): boolean => {
-    if (!user) return false
-    
-    // Check if required profile fields are filled
-    const hasUsername = user.username && user.username.trim() !== ''
-    const hasDisplayName = user.display_name && user.display_name.trim() !== ''
-    
-    // Check if username is not the auto-generated email-based one (indicates manual setup)
-    const isUsernameCustom = user.username && !user.username.startsWith('user_')
-    
-    return hasUsername && hasDisplayName && isUsernameCustom
-  }
-
   if (loading) {
-    return null // You could show a loading screen here
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
+    )
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
-          isProfileComplete(user) ? (
-            // User is authenticated and profile is complete - show main app
-            <>
-              <Stack.Screen name="Main" component={TabNavigator} />
-              <Stack.Screen 
-                name="ProfileSetup" 
-                component={ProfileSetupScreen}
-                options={{
-                  headerShown: true,
-                  title: 'Add Activities',
-                  headerStyle: {
-                    backgroundColor: '#6366f1',
-                  },
-                  headerTitleStyle: {
-                    color: '#fff',
-                    fontWeight: 'bold',
-                  },
-                  headerTintColor: '#fff',
-                }}
-              />
-              <Stack.Screen 
-                name="LocationSettings" 
-                component={LocationSettingsScreen}
-                options={{
-                  headerShown: true,
-                  title: 'Location Settings',
-                  headerStyle: {
-                    backgroundColor: '#6366f1',
-                  },
-                  headerTitleStyle: {
-                    color: '#fff',
-                    fontWeight: 'bold',
-                  },
-                  headerTintColor: '#fff',
-                }}
-              />
-              <Stack.Screen 
-                name="HomeLocationSettings" 
-                component={HomeLocationSettingsScreen}
-                options={{
-                  headerShown: true,
-                  title: 'Home Location',
-                  headerStyle: {
-                    backgroundColor: '#6366f1',
-                  },
-                  headerTitleStyle: {
-                    color: '#fff',
-                    fontWeight: 'bold',
-                  },
-                  headerTintColor: '#fff',
-                }}
-              />
-            </>
-          ) : (
-            // User is authenticated but profile setup is incomplete
+        {isAuthenticated && user ? (
+          // User is authenticated - show main app
+          <>
+            <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen 
-              name="ProfileSetup" 
-              component={ProfileSetupScreen}
+              name="LocationSettings" 
+              component={LocationSettingsScreen}
               options={{
-                headerShown: false,
-                gestureEnabled: false, // Prevent going back during setup
+                headerShown: true,
+                title: 'Location Settings',
+                headerStyle: {
+                  backgroundColor: '#6366f1',
+                },
+                headerTitleStyle: {
+                  color: '#fff',
+                  fontWeight: 'bold',
+                },
+                headerTintColor: '#fff',
               }}
             />
-          )
+            <Stack.Screen 
+              name="HomeLocationSettings" 
+              component={HomeLocationSettingsScreen}
+              options={{
+                headerShown: true,
+                title: 'Home Location',
+                headerStyle: {
+                  backgroundColor: '#6366f1',
+                },
+                headerTitleStyle: {
+                  color: '#fff',
+                  fontWeight: 'bold',
+                },
+                headerTintColor: '#fff',
+              }}
+            />
+          </>
         ) : (
           // User is not authenticated - show auth screen
           <Stack.Screen name="Auth" component={AuthScreen} />
