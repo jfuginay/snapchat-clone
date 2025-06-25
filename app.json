@@ -3,7 +3,11 @@
     "name": "TribeFind",
     "slug": "snapchat-clone",
     "version": "1.2.0",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,7 +17,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#6366f1"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "scheme": "tribefind",
     "ios": {
       "supportsTablet": true,
@@ -65,7 +71,8 @@
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos to your photo library.",
           "isAccessMediaLocationEnabled": true
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
