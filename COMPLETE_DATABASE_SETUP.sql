@@ -152,30 +152,30 @@ CREATE TABLE public.photos (
 -- INDEXES FOR PERFORMANCE
 -- =======================
 
--- User table indexes
-CREATE INDEX idx_users_username ON public.users(username);
-CREATE INDEX idx_users_email ON public.users(email);
-CREATE INDEX idx_users_is_online ON public.users(is_online) WHERE is_online = true;
+-- User table indexes (with IF NOT EXISTS)
+CREATE INDEX IF NOT EXISTS idx_users_username ON public.users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+CREATE INDEX IF NOT EXISTS idx_users_is_online ON public.users(is_online) WHERE is_online = true;
 
--- PostGIS spatial index for location queries
-CREATE INDEX users_location_gist_idx ON users USING GIST (location);
+-- PostGIS spatial index for location queries (with IF NOT EXISTS)
+CREATE INDEX IF NOT EXISTS users_location_gist_idx ON users USING GIST (location);
 
--- Activities table indexes
-CREATE INDEX idx_activities_category ON activities(category);
-CREATE INDEX idx_activities_active ON activities(is_active) WHERE is_active = true;
-CREATE INDEX idx_activities_popularity ON activities(popularity_score DESC);
+-- Activities table indexes (with IF NOT EXISTS)
+CREATE INDEX IF NOT EXISTS idx_activities_category ON activities(category);
+CREATE INDEX IF NOT EXISTS idx_activities_active ON activities(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_activities_popularity ON activities(popularity_score DESC);
 
--- User activities indexes
-CREATE INDEX idx_user_activities_user_id ON user_activities(user_id);
-CREATE INDEX idx_user_activities_activity_id ON user_activities(activity_id);
-CREATE INDEX idx_user_activities_skill_level ON user_activities(skill_level);
+-- User activities indexes (with IF NOT EXISTS)
+CREATE INDEX IF NOT EXISTS idx_user_activities_user_id ON user_activities(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_activities_activity_id ON user_activities(activity_id);
+CREATE INDEX IF NOT EXISTS idx_user_activities_skill_level ON user_activities(skill_level);
 
--- Other table indexes
-CREATE INDEX idx_messages_chat_room_id ON public.messages(chat_room_id);
-CREATE INDEX idx_messages_created_at ON public.messages(created_at);
-CREATE INDEX idx_friendships_requester ON public.friendships(requester_id);
-CREATE INDEX idx_friendships_addressee ON public.friendships(addressee_id);
-CREATE INDEX idx_photos_user_id ON public.photos(user_id);
+-- Other table indexes (with IF NOT EXISTS)
+CREATE INDEX IF NOT EXISTS idx_messages_chat_room_id ON public.messages(chat_room_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_friendships_requester ON public.friendships(requester_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON public.friendships(addressee_id);
+CREATE INDEX IF NOT EXISTS idx_photos_user_id ON public.photos(user_id);
 
 -- =======================
 -- ROW LEVEL SECURITY
@@ -190,41 +190,52 @@ ALTER TABLE public.chat_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.photos ENABLE ROW LEVEL SECURITY;
 
--- Users table policies
+-- Users table policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view all profiles" ON public.users;
 CREATE POLICY "Users can view all profiles" ON public.users
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
 CREATE POLICY "Users can update own profile" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
 CREATE POLICY "Users can insert own profile" ON public.users
   FOR INSERT WITH CHECK (auth.uid() = id);
 
--- Activities policies
+-- Activities policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Anyone can view active activities" ON activities;
 CREATE POLICY "Anyone can view active activities" ON activities
     FOR SELECT USING (is_active = true);
 
--- User activities policies
+-- User activities policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view their own activities" ON user_activities;
 CREATE POLICY "Users can view their own activities" ON user_activities
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own activities" ON user_activities;
 CREATE POLICY "Users can insert their own activities" ON user_activities
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own activities" ON user_activities;
 CREATE POLICY "Users can update their own activities" ON user_activities
     FOR UPDATE USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own activities" ON user_activities;
 CREATE POLICY "Users can delete their own activities" ON user_activities
     FOR DELETE USING (auth.uid() = user_id);
 
--- Other table policies
+-- Other table policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view their friendships" ON public.friendships;
 CREATE POLICY "Users can view their friendships" ON public.friendships
   FOR SELECT USING (requester_id = auth.uid() OR addressee_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can create friendship requests" ON public.friendships;
 CREATE POLICY "Users can create friendship requests" ON public.friendships
   FOR INSERT WITH CHECK (requester_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can view messages in their chats" ON public.messages;
 CREATE POLICY "Users can view messages in their chats" ON public.messages
   FOR SELECT USING (
     EXISTS (
@@ -234,9 +245,11 @@ CREATE POLICY "Users can view messages in their chats" ON public.messages
     )
   );
 
+DROP POLICY IF EXISTS "Users can view public photos and own photos" ON public.photos;
 CREATE POLICY "Users can view public photos and own photos" ON public.photos
   FOR SELECT USING (is_public = true OR user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can insert own photos" ON public.photos;
 CREATE POLICY "Users can insert own photos" ON public.photos
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
@@ -362,7 +375,7 @@ GRANT EXECUTE ON FUNCTION get_nearby_tribe_members TO authenticated;
 -- SAMPLE DATA FOR TESTING
 -- =======================
 
--- Insert sample activities for TribeFind
+-- Insert sample activities for TribeFind (skip if already exist)
 INSERT INTO activities (name, description, category, subcategory, icon, color, tags) VALUES
 -- Sports & Fitness
 ('Rock Climbing', 'Indoor and outdoor rock climbing', 'Sports', 'Adventure Sports', '🧗‍♂️', '#FF6B6B', ARRAY['adventure', 'strength', 'outdoor']),
@@ -381,17 +394,32 @@ INSERT INTO activities (name, description, category, subcategory, icon, color, t
 
 -- Outdoor & Adventure
 ('Hiking', 'Trail hiking and backpacking', 'Outdoor', 'Nature', '🥾', '#55A3FF', ARRAY['nature', 'endurance', 'exploration']),
-('Camping', 'Outdoor camping and survival', 'Outdoor', 'Nature', '⛺', '#26DE81', ARRAY['nature', 'survival', 'outdoors']);
+('Camping', 'Outdoor camping and survival', 'Outdoor', 'Nature', '⛺', '#26DE81', ARRAY['nature', 'survival', 'outdoors'])
+ON CONFLICT (name) DO NOTHING;
 
 -- Update popularity scores
 UPDATE activities SET popularity_score = 95 WHERE name IN ('Photography', 'Running');
 UPDATE activities SET popularity_score = 85 WHERE name IN ('Yoga', 'Hiking', 'Web Development', 'Music Production');
 UPDATE activities SET popularity_score = 75 WHERE name IN ('Dancing', 'Basketball');
 
--- Enable real-time subscriptions
-ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.friendships;
+-- Enable real-time subscriptions (ignore errors if already added)
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.friendships;
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+END $$;
 
 -- Success message
 DO $$
