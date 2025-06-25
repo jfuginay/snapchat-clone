@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "TribeFind",
-    "slug": "snapchat-clone",
+    "slug": "tribefind",
     "version": "1.2.0",
     "platforms": [
       "ios",
