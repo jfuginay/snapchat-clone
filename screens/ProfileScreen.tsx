@@ -118,6 +118,10 @@ export default function ProfileScreen() {
     navigation.navigate('HomeLocationSettings' as never)
   }
 
+  const goToActivitiesSettings = () => {
+    navigation.navigate('Activities' as never)
+  }
+
   const handleTwitterLink = async () => {
     try {
       setTwitterLinking(true)
@@ -215,6 +219,15 @@ export default function ProfileScreen() {
             <View style={styles.settingContent}>
               <Text style={styles.settingTitle}>Home Location</Text>
               <Text style={styles.settingSubtitle}>Set your home address</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.settingItem} onPress={goToActivitiesSettings}>
+            <Text style={styles.settingIcon}>🎯</Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Activities & Interests</Text>
+              <Text style={styles.settingSubtitle}>Select your favorite activities</Text>
             </View>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
