@@ -172,18 +172,30 @@ const UserSearchScreen: React.FC = () => {
         )
         .single();
 
+      console.log(`🔍 Checking friendship status between ${user.id} and ${otherUserId}:`, {
+        found: !!friendship,
+        status: friendship?.status,
+        requester: friendship?.requester_id,
+        addressee: friendship?.addressee_id,
+        error: error?.message
+      });
+
       if (error || !friendship) {
         return 'none';
       }
 
       if (friendship.status === 'accepted') {
+        console.log(`✅ Friendship status: ACCEPTED for user ${otherUserId}`);
         return 'accepted';
       } else if (friendship.requester_id === user.id) {
+        console.log(`📤 Friendship status: PENDING_SENT for user ${otherUserId}`);
         return 'pending_sent';
       } else {
+        console.log(`📥 Friendship status: PENDING_RECEIVED for user ${otherUserId}`);
         return 'pending_received';
       }
     } catch (error) {
+      console.log(`❌ Error getting friendship status for user ${otherUserId}:`, error);
       return 'none';
     }
   };
@@ -230,6 +242,34 @@ const UserSearchScreen: React.FC = () => {
     if (!user) return;
 
     try {
+      console.log('🚀 Sending friend request to:', targetUsername, 'ID:', targetUserId);
+      
+      // Check if friendship already exists (prevent duplicates)
+      const { data: existingFriendship, error: checkError } = await supabase
+        .from('friendships')
+        .select('*')
+        .or(
+          `and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id})`
+        )
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking existing friendship:', checkError);
+        throw checkError;
+      }
+
+      if (existingFriendship) {
+        console.log('⚠️ Friendship already exists:', existingFriendship);
+        Alert.alert('Already Connected', 'You already have a connection with this user!');
+        // Refresh data to show correct status
+        if (searchMode === 'nearby') {
+          await loadNearbyUsers();
+        } else {
+          await searchUsers(searchQuery);
+        }
+        return;
+      }
+
       // Optimistically update UI immediately
       const updateUserStatus = (users: UserResult[]) => {
         return users.map(u => 
@@ -246,8 +286,8 @@ const UserSearchScreen: React.FC = () => {
         setSearchResults(prev => updateUserStatus(prev));
       }
 
-      // Update database
-      const { error } = await supabase
+      // Insert new friendship request
+      const { error: insertError } = await supabase
         .from('friendships')
         .insert({
           requester_id: user.id,
@@ -255,23 +295,23 @@ const UserSearchScreen: React.FC = () => {
           status: 'pending'
         });
 
-      if (error) {
-        throw error;
+      if (insertError) {
+        console.error('❌ Error inserting friendship:', insertError);
+        throw insertError;
       }
 
+      console.log('✅ Friend request sent successfully!');
       Alert.alert('Success', `Friend request sent to ${targetUsername}! 📨`);
       
-      // Refresh the data after a short delay to ensure database consistency
-      setTimeout(() => {
-        if (searchMode === 'nearby') {
-          loadNearbyUsers();
-        } else {
-          searchUsers(searchQuery);
-        }
-      }, 1000);
+      // Refresh the data immediately to show the updated status
+      if (searchMode === 'nearby') {
+        await loadNearbyUsers();
+      } else {
+        await searchUsers(searchQuery);
+      }
 
     } catch (error) {
-      console.error('Error sending friend request:', error);
+      console.error('❌ Error sending friend request:', error);
       
       // Revert optimistic update on error
       if (searchMode === 'nearby') {
@@ -291,6 +331,8 @@ const UserSearchScreen: React.FC = () => {
     if (!user) return;
 
     try {
+      console.log('🤝 Accepting friend request from:', targetUsername, 'ID:', targetUserId);
+      
       // Optimistically update UI immediately for better UX
       const updateUserStatus = (users: UserResult[]) => {
         return users.map(u => 
@@ -307,37 +349,78 @@ const UserSearchScreen: React.FC = () => {
         setSearchResults(prev => updateUserStatus(prev));
       }
 
-      // Update database
-      const { error } = await supabase
+      // First, find the correct friendship record
+      const { data: friendship, error: findError } = await supabase
         .from('friendships')
-        .update({ status: 'accepted' })
-        .eq('requester_id', targetUserId)
-        .eq('addressee_id', user.id);
+        .select('*')
+        .or(
+          `and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id}),and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId})`
+        )
+        .eq('status', 'pending')
+        .single();
 
-      if (error) {
-        throw error;
+      if (findError || !friendship) {
+        console.error('❌ No pending friendship found:', findError);
+        throw new Error('No pending friend request found');
       }
 
-      // Show celebratory tribe-mate confirmation
-      Alert.alert(
-        '🎉 Welcome to the Tribe!', 
-        `You and ${targetUsername} are now tribe-mates! You can discover activities together, share moments, and explore new interests. Start your journey of mutual discovery! 🚀`,
-        [
-          { text: 'Discover Together!', style: 'default' }
-        ]
-      );
+      console.log('✅ Found friendship record:', friendship);
+
+      // Update the friendship status to accepted
+      console.log(`🔄 Updating friendship ID ${friendship.id} from "${friendship.status}" to "accepted"`);
       
-      // Refresh the data after a short delay to ensure database consistency
-      setTimeout(() => {
-        if (searchMode === 'nearby') {
-          loadNearbyUsers();
-        } else {
-          searchUsers(searchQuery);
-        }
-      }, 1000);
+      const { data: updateData, error: updateError, count } = await supabase
+        .from('friendships')
+        .update({ 
+          status: 'accepted',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', friendship.id)
+        .select(); // Return the updated record to verify the change
+
+      console.log('📝 Update result:', {
+        error: updateError,
+        data: updateData,
+        count: count,
+        recordsUpdated: updateData?.length || 0
+      });
+
+      if (updateError) {
+        console.error('❌ Error updating friendship:', updateError);
+        console.error('❌ Update error details:', JSON.stringify(updateError, null, 2));
+        throw updateError;
+      }
+
+      if (!updateData || updateData.length === 0) {
+        console.error('❌ No records were updated - possible RLS policy issue');
+        throw new Error('Failed to update friendship status - no records affected');
+      }
+
+      console.log('✅ Friendship successfully updated:', updateData[0]);
+
+          console.log('✅ Friend request accepted successfully!');
+
+    // Show celebratory tribe-mate confirmation
+    Alert.alert(
+      '🎉 Welcome to the Tribe!', 
+      `You and ${targetUsername} are now tribe-mates! You can discover activities together, share moments, and explore new interests. Start your journey of mutual discovery! 🚀`,
+      [
+        { text: 'Discover Together!', style: 'default' }
+      ]
+    );
+    
+    // Wait a moment for database changes to propagate, then refresh
+    setTimeout(async () => {
+      console.log('🔄 Refreshing user list after friendship acceptance...');
+      if (searchMode === 'nearby') {
+        await loadNearbyUsers();
+      } else {
+        await searchUsers(searchQuery);
+      }
+    }, 1000); // 1 second delay to ensure database consistency
 
     } catch (error) {
-      console.error('Error accepting friend request:', error);
+      console.error('❌ Error accepting friend request:', error);
       
       // Revert optimistic update on error
       if (searchMode === 'nearby') {
