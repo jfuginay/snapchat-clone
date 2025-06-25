@@ -55,7 +55,7 @@ export default function Auth() {
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.logo}>👻</Text>
-            <Text style={styles.title}>Snapchat</Text>
+            <Text style={styles.title}>TribeFind</Text>
             <Text style={styles.subtitle}>Login to continue</Text>
           </View>
 

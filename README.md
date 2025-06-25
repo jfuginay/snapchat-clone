@@ -63,8 +63,8 @@ Visit us at: **[https://tribefind.engindearing.soy/](https://tribefind.engindear
 
 ### 1. Clone and Install
 ```bash
-git clone https://github.com/jfuginay/snapchat-clone.git
-cd snapchat-clone
+git clone https://github.com/jfuginay/tribefind.git
+cd tribefind
 npm install
 ```
 
@@ -103,7 +103,7 @@ Scan the QR code with Expo Go (Android) or Camera app (iOS) to run on your devic
 ## 🏗 TribeFind Project Structure
 
 ```
-tribefind-snapchat-clone/
+tribefind/
 ├── screens/           # TribeFind screens (Auth, Camera, Home, Map, Profile)
 │   ├── MapScreen.tsx     # Nearby tribe member discovery with PostGIS
 │   ├── AuthScreen.tsx    # Beautiful TribeFind-branded authentication
@@ -159,7 +159,7 @@ eas build --platform ios
 eas build --platform android
 ```
 
-Current deployment: [Expo Build Dashboard](https://expo.dev/accounts/jfuginay/projects/snapchat-clone)
+Current deployment: [Expo Build Dashboard](https://expo.dev/accounts/jfuginay/projects/tribefind)
 
 ## 🔧 Development
 
@@ -199,11 +199,11 @@ TribeFind is built with AI-first principles for connecting communities through s
 ## 🔗 TribeFind Links
 
 - **TribeFind Website**: [https://tribefind.engindearing.soy/](https://tribefind.engindearing.soy/)
-- **GitHub Repository**: https://github.com/jfuginay/snapchat-clone
-- **Expo Project**: https://expo.dev/accounts/jfuginay/projects/snapchat-clone
+- **GitHub Repository**: https://github.com/jfuginay/tribefind
+- **Expo Project**: https://expo.dev/accounts/jfuginay/projects/tribefind
 - **EnginDearing.soy**: AI-First Engineering Principles
 - **Supabase Documentation**: https://supabase.com/docs
-- **PostGIS Documentation**: https://postgis.net/docs/
+- **PostGIS Documentation**: https://postgis.net/docs
 
 ---
 
