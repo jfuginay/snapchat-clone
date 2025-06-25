@@ -7,10 +7,12 @@ import { useAppSelector } from '../store'
 
 // Import screens
 import AuthScreen from '../screens/AuthScreen'
+import ProfileSetupScreen from '../screens/ProfileSetupScreen'
 import CameraScreen from '../screens/CameraScreen'
 import MapScreen from '../screens/MapScreen'
 import ProfileScreen from '../screens/ProfileScreen'
 import HomeScreen from '../screens/HomeScreen'
+import UserSearchScreen from '../screens/UserSearchScreen'
 import LocationSettingsScreen from '../screens/LocationSettingsScreen'
 
 const Stack = createStackNavigator()
@@ -27,6 +29,8 @@ function TabNavigator() {
             iconName = focused ? 'home' : 'home-outline'
           } else if (route.name === 'Camera') {
             iconName = focused ? 'camera' : 'camera-outline'
+          } else if (route.name === 'Friends') {
+            iconName = focused ? 'people' : 'people-outline'
           } else if (route.name === 'Map') {
             iconName = focused ? 'map' : 'map-outline'
           } else if (route.name === 'Profile') {
@@ -58,6 +62,13 @@ function TabNavigator() {
           headerShown: false, // Hide header for camera for full screen experience
         }}
       />
+      <Tab.Screen 
+        name="Friends" 
+        component={UserSearchScreen}
+        options={{
+          headerShown: false, // Hide header for custom gradient design
+        }}
+      />
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -65,7 +76,23 @@ function TabNavigator() {
 }
 
 export default function Navigation() {
-  const { isAuthenticated, loading } = useAppSelector((state) => state.auth)
+  const { isAuthenticated, loading, user } = useAppSelector((state) => state.auth)
+
+  /**
+   * Check if user profile setup is complete
+   */
+  const isProfileComplete = (user: any): boolean => {
+    if (!user) return false
+    
+    // Check if required profile fields are filled
+    const hasUsername = user.username && user.username.trim() !== ''
+    const hasDisplayName = user.display_name && user.display_name.trim() !== ''
+    
+    // Check if username is not the auto-generated email-based one (indicates manual setup)
+    const isUsernameCustom = user.username && !user.username.startsWith('user_')
+    
+    return hasUsername && hasDisplayName && isUsernameCustom
+  }
 
   if (loading) {
     return null // You could show a loading screen here
@@ -75,26 +102,40 @@ export default function Navigation() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <>
-            <Stack.Screen name="Main" component={TabNavigator} />
+          isProfileComplete(user) ? (
+            // User is authenticated and profile is complete - show main app
+            <>
+              <Stack.Screen name="Main" component={TabNavigator} />
+              <Stack.Screen 
+                name="LocationSettings" 
+                component={LocationSettingsScreen}
+                options={{
+                  headerShown: true,
+                  title: 'Location Settings',
+                  headerStyle: {
+                    backgroundColor: '#FFFC00',
+                  },
+                  headerTitleStyle: {
+                    color: '#000',
+                    fontWeight: 'bold',
+                  },
+                  headerTintColor: '#000',
+                }}
+              />
+            </>
+          ) : (
+            // User is authenticated but profile setup is incomplete
             <Stack.Screen 
-              name="LocationSettings" 
-              component={LocationSettingsScreen}
+              name="ProfileSetup" 
+              component={ProfileSetupScreen}
               options={{
-                headerShown: true,
-                title: 'Location Settings',
-                headerStyle: {
-                  backgroundColor: '#FFFC00',
-                },
-                headerTitleStyle: {
-                  color: '#000',
-                  fontWeight: 'bold',
-                },
-                headerTintColor: '#000',
+                headerShown: false,
+                gestureEnabled: false, // Prevent going back during setup
               }}
             />
-          </>
+          )
         ) : (
+          // User is not authenticated - show auth screen
           <Stack.Screen name="Auth" component={AuthScreen} />
         )}
       </Stack.Navigator>
