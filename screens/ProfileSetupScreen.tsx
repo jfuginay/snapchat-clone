@@ -37,17 +37,20 @@ const ProfileSetupScreen: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const navigation = useNavigation();
   
+  // Check if this is activities-only mode (user profile already complete)
+  const isActivitiesOnlyMode = user?.username && user?.display_name && !user.username.startsWith('user_');
+  
   // Form state
   const [profileData, setProfileData] = useState<ProfileData>({
     avatar: '😊',
-    username: '',
+    username: user?.username || '',
     display_name: user?.display_name || '',
-    bio: '',
+    bio: user?.bio || '',
     selectedActivities: [],
   });
 
-  // UI state
-  const [currentStep, setCurrentStep] = useState(1);
+  // UI state - Start at step 3 (activities) if it's activities-only mode
+  const [currentStep, setCurrentStep] = useState(isActivitiesOnlyMode ? 3 : 1);
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
@@ -58,7 +61,7 @@ const ProfileSetupScreen: React.FC = () => {
   const displayNameRef = useRef<TextInput>(null);
   const bioRef = useRef<TextInput>(null);
 
-  const totalSteps = 4;
+  const totalSteps = isActivitiesOnlyMode ? 1 : 4; // Only 1 step for activities-only mode
 
   /**
    * Validate current step data
@@ -253,7 +256,7 @@ const ProfileSetupScreen: React.FC = () => {
   };
 
   /**
-   * Complete profile setup
+   * Complete profile setup or activity update
    */
   const completeProfile = async () => {
     if (!user) {
@@ -264,66 +267,84 @@ const ProfileSetupScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      // Update user profile in database
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          username: profileData.username.toLowerCase(),
-          display_name: profileData.display_name,
-          bio: profileData.bio,
-          avatar: avatarUri ? profileData.avatar : '😊', // Use uploaded avatar or emoji
-          last_active: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Clear any existing user activities first
-      await supabase
-        .from('user_activities')
-        .delete()
-        .eq('user_id', user.id);
-
-      // Add selected activities (ActivitySelector handles this internally, but we'll ensure consistency)
-      if (profileData.selectedActivities.length > 0) {
-        const activityInserts = profileData.selectedActivities.map(activityId => ({
-          user_id: user.id,
-          activity_id: activityId,
-          skill_level: 'beginner', // Default skill level
-          interest_level: 5,
-          is_teaching: false,
-          is_learning: true,
-        }));
-
-        const { error: activitiesError } = await supabase
-          .from('user_activities')
-          .insert(activityInserts);
-
-        if (activitiesError) {
-          console.error('Error saving activities:', activitiesError);
-          // Don't fail the whole process for activities
-        }
-      }
-
-      Alert.alert(
-        '🎉 Welcome to TribeFind!', 
-        'Your profile has been created successfully. Time to find your tribe!',
-        [
-          {
-            text: 'Get Started',
-            onPress: () => {
-              // Navigate to main app
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' as never }],
-              });
+      if (isActivitiesOnlyMode) {
+        // Activities-only mode - just save activities and go back
+        // Note: ActivitySelector handles saving activities internally
+        Alert.alert(
+          '✅ Activities Updated!', 
+          'Your interests have been updated. You can now find tribe members with shared activities!',
+          [
+            {
+              text: 'Done',
+              onPress: () => {
+                navigation.goBack();
+              }
             }
+          ]
+        );
+      } else {
+        // Full profile setup mode
+        // Update user profile in database
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            username: profileData.username.toLowerCase(),
+            display_name: profileData.display_name,
+            bio: profileData.bio,
+            avatar: avatarUri ? profileData.avatar : '😊', // Use uploaded avatar or emoji
+            last_active: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // Clear any existing user activities first
+        await supabase
+          .from('user_activities')
+          .delete()
+          .eq('user_id', user.id);
+
+        // Add selected activities (ActivitySelector handles this internally, but we'll ensure consistency)
+        if (profileData.selectedActivities.length > 0) {
+          const activityInserts = profileData.selectedActivities.map(activityId => ({
+            user_id: user.id,
+            activity_id: activityId,
+            skill_level: 'beginner', // Default skill level
+            interest_level: 5,
+            is_teaching: false,
+            is_learning: true,
+          }));
+
+          const { error: activitiesError } = await supabase
+            .from('user_activities')
+            .insert(activityInserts);
+
+          if (activitiesError) {
+            console.error('Error saving activities:', activitiesError);
+            // Don't fail the whole process for activities
           }
-        ]
-      );
+        }
+
+        Alert.alert(
+          '🎉 Welcome to TribeFind!', 
+          'Your profile has been created successfully. Time to find your tribe!',
+          [
+            {
+              text: 'Get Started',
+              onPress: () => {
+                // Navigate to main app
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' as never }],
+                });
+              }
+            }
+          ]
+        );
+      }
 
     } catch (error) {
       console.error('Error completing profile:', error);
@@ -336,19 +357,23 @@ const ProfileSetupScreen: React.FC = () => {
   /**
    * Render progress indicator
    */
-  const renderProgressIndicator = () => (
-    <View style={styles.progressContainer}>
-      <Text style={styles.progressText}>Step {currentStep} of {totalSteps}</Text>
-      <View style={styles.progressBar}>
-        <View 
-          style={[
-            styles.progressFill, 
-            { width: `${(currentStep / totalSteps) * 100}%` }
-          ]} 
-        />
+  const renderProgressIndicator = () => {
+    if (isActivitiesOnlyMode) return null; // No progress indicator for activities-only mode
+    
+    return (
+      <View style={styles.progressContainer}>
+        <Text style={styles.progressText}>Step {currentStep} of {totalSteps}</Text>
+        <View style={styles.progressBar}>
+          <View 
+            style={[
+              styles.progressFill, 
+              { width: `${(currentStep / totalSteps) * 100}%` }
+            ]} 
+          />
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   /**
    * Render step 1: Avatar & Basic Info
@@ -451,7 +476,7 @@ const ProfileSetupScreen: React.FC = () => {
       </View>
 
       <View style={styles.tipContainer}>
-        <Ionicons name="lightbulb-outline" size={20} color="#3B82F6" />
+        <Ionicons name="bulb-outline" size={20} color="#3B82F6" />
         <Text style={styles.tipText}>
           A good bio helps you connect with like-minded people in your area!
         </Text>
@@ -475,10 +500,10 @@ const ProfileSetupScreen: React.FC = () => {
 
       <View style={styles.activitySelectorContainer}>
         <ActivitySelector
-          onSelectionChange={handleActivitySelection}
+          onSelectionChange={handleActivitySelection as any}
           showCategories={true}
           allowMultiSelect={true}
-          maxSelections={10}
+          maxSelections={null}
         />
       </View>
     </View>
@@ -536,7 +561,7 @@ const ProfileSetupScreen: React.FC = () => {
    */
   const renderNavigationButtons = () => (
     <View style={styles.navigationContainer}>
-      {currentStep > 1 && (
+      {currentStep > 1 && !isActivitiesOnlyMode && (
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={previousStep}
@@ -551,7 +576,7 @@ const ProfileSetupScreen: React.FC = () => {
         style={[
           styles.nextButton, 
           loading && styles.nextButtonDisabled,
-          currentStep === 1 && styles.nextButtonFull
+          (currentStep === 1 || isActivitiesOnlyMode) && styles.nextButtonFull
         ]} 
         onPress={nextStep}
         disabled={loading || uploadingAvatar}
@@ -561,9 +586,14 @@ const ProfileSetupScreen: React.FC = () => {
         ) : (
           <>
             <Text style={styles.nextButtonText}>
-              {currentStep === totalSteps ? 'Complete Profile' : 'Continue'}
+              {isActivitiesOnlyMode 
+                ? 'Save Activities' 
+                : currentStep === totalSteps 
+                  ? 'Complete Profile' 
+                  : 'Continue'
+              }
             </Text>
-            {currentStep < totalSteps && (
+            {currentStep < totalSteps && !isActivitiesOnlyMode && (
               <Ionicons name="chevron-forward" size={20} color="#fff" />
             )}
           </>
@@ -573,7 +603,7 @@ const ProfileSetupScreen: React.FC = () => {
   );
 
   return (
-    <LinearGradient colors={['#FFFC00', '#FFE135']} style={styles.container}>
+    <LinearGradient colors={['#6366f1', '#8b5cf6', '#a855f7']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView 
           style={styles.keyboardAvoid}
@@ -622,28 +652,31 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 15,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   progressContainer: {
     alignItems: 'center',
   },
   progressText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#E5E7EB',
     marginBottom: 8,
   },
   progressBar: {
     width: '100%',
     height: 4,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   content: {

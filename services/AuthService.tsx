@@ -3,10 +3,12 @@ import { supabase, User, testSupabaseConnection } from '../lib/supabase'
 import { useAppDispatch, useAppSelector } from '../store'
 import { setAuth, setLoading, clearAuth, updateUser } from '../store/authSlice'
 import { Session } from '@supabase/supabase-js'
+import twitterAuthService, { TwitterUser } from './TwitterAuthService'
 
 interface AuthContextType {
   signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ error?: string }>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
+  signInWithTwitter: () => Promise<{ error?: string }>
   signOut: () => Promise<{ error?: string }>
   resetPassword: (email: string) => Promise<{ error?: string }>
   updateProfile: (updates: Partial<User>) => Promise<{ error?: string }>
@@ -281,6 +283,135 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const signInWithTwitter = async () => {
+    try {
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testSupabaseConnection()
+      if (!isConnected) {
+        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+
+      // Validate Twitter configuration
+      const config = twitterAuthService.validateConfiguration()
+      if (!config.valid) {
+        console.error('Twitter OAuth configuration errors:', config.errors)
+        return { error: 'Twitter authentication is not properly configured.' }
+      }
+
+      // Start Twitter OAuth flow
+      const twitterResult = await twitterAuthService.signInWithTwitter()
+      
+      if (!twitterResult.success || !twitterResult.user) {
+        return { error: twitterResult.error || 'Twitter authentication failed' }
+      }
+
+      const twitterUser = twitterResult.user
+      console.log('✅ Twitter authentication successful:', twitterUser.username)
+
+      // Check if user already exists with this Twitter ID
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('social_accounts->twitter->>id', twitterUser.id)
+        .single()
+
+      if (existingUser) {
+        // User exists, sign them in
+        console.log('🔄 Existing Twitter user found, signing in...')
+        
+        // Create a temporary Supabase session (you might need to adjust this based on your setup)
+        // For now, we'll create/update the user profile and let the auth state handle the rest
+        dispatch(setAuth({ user: existingUser, session: null }))
+        return {}
+      }
+
+      // Transform Twitter user data to TribeFind format
+      const userProfileData = twitterAuthService.transformTwitterUserToTribeUser(twitterUser)
+
+      // Check if username is available (add suffix if needed)
+      let finalUsername = userProfileData.username!
+      let usernameCounter = 1
+      
+      while (true) {
+        const { data: usernameCheck } = await supabase
+          .from('users')
+          .select('username')
+          .eq('username', finalUsername)
+          .single()
+
+        if (!usernameCheck) break // Username is available
+        
+        finalUsername = `${userProfileData.username}_${usernameCounter}`
+        usernameCounter++
+      }
+
+      // Create new user profile for Twitter user
+      const newUserData = {
+        id: `twitter_${twitterUser.id}`, // Use Twitter ID as user ID
+        email: `${twitterUser.username}@twitter.local`, // Placeholder email
+        username: finalUsername,
+        display_name: userProfileData.display_name,
+        avatar: userProfileData.avatar,
+        bio: userProfileData.bio,
+        snap_score: 0,
+        last_active: new Date().toISOString(),
+        is_online: true,
+        social_accounts: userProfileData.social_accounts,
+        auth_provider: 'twitter',
+        settings: {
+          share_location: false,
+          allow_friend_requests: true,
+          show_online_status: true,
+          allow_message_from_strangers: false,
+          ghost_mode: false,
+          privacy_level: 'friends',
+          notifications: {
+            push_enabled: true,
+            location_updates: true,
+            friend_requests: true,
+            messages: true
+          }
+        },
+        stats: {
+          snaps_shared: 0,
+          friends_count: 0,
+          stories_posted: 0
+        }
+      }
+
+      const { data: createdUser, error: createError } = await supabase
+        .from('users')
+        .upsert(newUserData, {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Error creating Twitter user profile:', createError)
+        return { error: 'Failed to create user profile from Twitter account' }
+      }
+
+      console.log('✅ Twitter user profile created successfully')
+      
+      // Set the user in our app state
+      dispatch(setAuth({ user: createdUser, session: null }))
+      
+      return {}
+    } catch (error) {
+      console.error('Twitter sign in error:', error)
+      if (error instanceof Error && (error.message.includes('network') || error.message.includes('fetch'))) {
+        return { error: 'Network error. Please check your internet connection.' }
+      }
+      return { error: 'An unexpected error occurred during Twitter authentication' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
   const signOut = async () => {
     try {
       dispatch(setLoading(true))
@@ -381,6 +512,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value = {
     signUp,
     signIn,
+    signInWithTwitter,
     signOut,
     resetPassword,
     updateProfile,

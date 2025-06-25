@@ -11,9 +11,10 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFC00"
+      "backgroundColor": "#6366f1"
     },
     "assetBundlePatterns": ["**/*"],
+    "scheme": "tribefind",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -30,7 +31,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFC00"
+        "backgroundColor": "#6366f1"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [

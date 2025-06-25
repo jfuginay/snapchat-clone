@@ -230,6 +230,23 @@ const UserSearchScreen: React.FC = () => {
     if (!user) return;
 
     try {
+      // Optimistically update UI immediately
+      const updateUserStatus = (users: UserResult[]) => {
+        return users.map(u => 
+          u.id === targetUserId 
+            ? { ...u, friendship_status: 'pending_sent' as const }
+            : u
+        );
+      };
+
+      // Update local state immediately for better UX
+      if (searchMode === 'nearby') {
+        setNearbyUsers(prev => updateUserStatus(prev));
+      } else {
+        setSearchResults(prev => updateUserStatus(prev));
+      }
+
+      // Update database
       const { error } = await supabase
         .from('friendships')
         .insert({
@@ -242,16 +259,27 @@ const UserSearchScreen: React.FC = () => {
         throw error;
       }
 
-      Alert.alert('Success', `Friend request sent to ${targetUsername}!`);
+      Alert.alert('Success', `Friend request sent to ${targetUsername}! 📨`);
       
-      // Refresh the data
+      // Refresh the data after a short delay to ensure database consistency
+      setTimeout(() => {
+        if (searchMode === 'nearby') {
+          loadNearbyUsers();
+        } else {
+          searchUsers(searchQuery);
+        }
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      
+      // Revert optimistic update on error
       if (searchMode === 'nearby') {
         loadNearbyUsers();
       } else {
         searchUsers(searchQuery);
       }
-    } catch (error) {
-      console.error('Error sending friend request:', error);
+      
       Alert.alert('Error', 'Failed to send friend request. Please try again.');
     }
   };
@@ -263,6 +291,23 @@ const UserSearchScreen: React.FC = () => {
     if (!user) return;
 
     try {
+      // Optimistically update UI immediately
+      const updateUserStatus = (users: UserResult[]) => {
+        return users.map(u => 
+          u.id === targetUserId 
+            ? { ...u, friendship_status: 'accepted' as const }
+            : u
+        );
+      };
+
+      // Update local state immediately for better UX
+      if (searchMode === 'nearby') {
+        setNearbyUsers(prev => updateUserStatus(prev));
+      } else {
+        setSearchResults(prev => updateUserStatus(prev));
+      }
+
+      // Update database
       const { error } = await supabase
         .from('friendships')
         .update({ status: 'accepted' })
@@ -273,16 +318,27 @@ const UserSearchScreen: React.FC = () => {
         throw error;
       }
 
-      Alert.alert('Success', `You are now friends with ${targetUsername}!`);
+      Alert.alert('Success', `You are now friends with ${targetUsername}! 🎉`);
       
-      // Refresh the data
+      // Refresh the data after a short delay to ensure database consistency
+      setTimeout(() => {
+        if (searchMode === 'nearby') {
+          loadNearbyUsers();
+        } else {
+          searchUsers(searchQuery);
+        }
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      
+      // Revert optimistic update on error
       if (searchMode === 'nearby') {
         loadNearbyUsers();
       } else {
         searchUsers(searchQuery);
       }
-    } catch (error) {
-      console.error('Error accepting friend request:', error);
+      
       Alert.alert('Error', 'Failed to accept friend request. Please try again.');
     }
   };
@@ -412,7 +468,7 @@ const UserSearchScreen: React.FC = () => {
   const currentData = searchMode === 'search' ? searchResults : nearbyUsers;
 
   return (
-    <LinearGradient colors={['#FFFC00', '#FFE135']} style={styles.container}>
+    <LinearGradient colors={['#6366f1', '#8b5cf6', '#a855f7']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
@@ -502,12 +558,15 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
     marginBottom: 5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#F0F0F0',
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -541,7 +600,7 @@ const styles = StyleSheet.create({
   },
   modeText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#E5E7EB',
     fontWeight: '500',
   },
   userList: {

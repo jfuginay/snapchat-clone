@@ -18,9 +18,11 @@ import MapView, {
   PROVIDER_GOOGLE,
   MarkerPressEvent 
 } from 'react-native-maps';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAppSelector } from '../store';
 import locationService from '../src/services/locationService';
+import ActivityFilter from '../components/ActivityFilter';
 
 const { width, height } = Dimensions.get('window');
 
@@ -52,6 +54,7 @@ interface UserLocation {
 
 const MapScreen: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
+  const navigation = useNavigation<any>();
   const mapRef = useRef<MapView>(null);
   
   // State management
@@ -66,6 +69,11 @@ const MapScreen: React.FC = () => {
   const [mapReady, setMapReady] = useState(false);
   const [locationTrackingActive, setLocationTrackingActive] = useState(false);
   const locationTrackingRef = useRef<number | null>(null);
+  
+  // Activity filtering state
+  const [selectedActivityFilters, setSelectedActivityFilters] = useState<string[]>([]);
+  const [allTribeMembers, setAllTribeMembers] = useState<TribeMember[]>([]); // Store all unfiltered results
+  const [filteredTribeMembers, setFilteredTribeMembers] = useState<TribeMember[]>([]); // Store filtered results
 
   // Initial region (San Francisco as default)
   const [region, setRegion] = useState<Region>({
@@ -78,6 +86,34 @@ const MapScreen: React.FC = () => {
   useEffect(() => {
     initializeMap();
   }, [user]);
+
+  /**
+   * Handle activity filter changes
+   */
+  const handleActivityFilterChange = useCallback((selectedFilters: string[]) => {
+    setSelectedActivityFilters(selectedFilters);
+    
+    if (selectedFilters.length === 0) {
+      // No filters - show all tribe members
+      setFilteredTribeMembers(allTribeMembers);
+    } else {
+      // Filter tribe members by selected activities
+      const filtered = allTribeMembers.filter((member: TribeMember) => {
+        // Check if member has at least one shared activity that matches the selected filters
+        return member.shared_activities.some((activity: any) => 
+          selectedFilters.includes(activity.id)
+        );
+      });
+      setFilteredTribeMembers(filtered);
+    }
+  }, [allTribeMembers]);
+
+  /**
+   * Update filtered tribe members when all members change
+   */
+  useEffect(() => {
+    handleActivityFilterChange(selectedActivityFilters);
+  }, [allTribeMembers, handleActivityFilterChange]);
 
   /**
    * Handle real-time location updates from other tribe members
@@ -382,7 +418,13 @@ const MapScreen: React.FC = () => {
             'Select Your Interests',
             'To find nearby tribe members, please add some activities to your profile first!',
             [
-              { text: 'Add Activities', onPress: () => {/* Navigate to activities */} },
+              { 
+                text: 'Add Activities', 
+                onPress: () => {
+                  // Navigate to ProfileSetup screen where users can add activities
+                  navigation.navigate('ProfileSetup');
+                }
+              },
               { text: 'Later', style: 'cancel' }
             ]
           );
@@ -409,7 +451,23 @@ const MapScreen: React.FC = () => {
       }
 
       console.log(`✅ Found ${nearbyUsers?.length || 0} nearby tribe members`);
-      setTribeMembers(nearbyUsers || []);
+      
+      // Update both all members and filtered members
+      const membersData = nearbyUsers || [];
+      setAllTribeMembers(membersData);
+      setTribeMembers(membersData); // Keep for backward compatibility
+      
+      // Apply current filters to new data
+      if (selectedActivityFilters.length === 0) {
+        setFilteredTribeMembers(membersData);
+      } else {
+        const filtered = membersData.filter((member: TribeMember) => {
+          return member.shared_activities.some((activity: any) => 
+            selectedActivityFilters.includes(activity.id)
+          );
+        });
+        setFilteredTribeMembers(filtered);
+      }
 
     } catch (error) {
       console.error('Error in loadNearbyTribeMembers:', error);
@@ -656,6 +714,14 @@ const MapScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {/* Activity Filter */}
+      <ActivityFilter
+        onFilterChange={handleActivityFilterChange}
+        selectedActivities={selectedActivityFilters}
+        userActivitiesOnly={false}
+        userId={user?.id}
+      />
+
       {/* Map View */}
       <MapView
         ref={mapRef}
@@ -685,7 +751,7 @@ const MapScreen: React.FC = () => {
         )}
 
         {/* Tribe member markers */}
-        {tribeMembers.map(renderTribeMemberMarker)}
+        {filteredTribeMembers.map(renderTribeMemberMarker)}
       </MapView>
 
       {/* Map Controls */}
@@ -722,7 +788,10 @@ const MapScreen: React.FC = () => {
       {/* Stats with Real-time Indicators */}
       <View style={styles.stats}>
         <Text style={styles.statsText}>
-          🎯 {tribeMembers.length} tribe members nearby
+          🎯 {selectedActivityFilters.length === 0 
+            ? `${tribeMembers.length} tribe members nearby`
+            : `${filteredTribeMembers.length} of ${tribeMembers.length} members shown`
+          }
         </Text>
         <View style={styles.statusIndicators}>
           <View style={styles.statusItem}>
@@ -753,7 +822,7 @@ const styles = StyleSheet.create({
   },
   map: {
     width: '100%',
-    height: '100%',
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
