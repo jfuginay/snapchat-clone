@@ -1,6 +1,6 @@
 {
-  "name": "snapchat-clone",
-  "version": "1.0.0",
+  "name": "tribefind",
+  "version": "1.2.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",

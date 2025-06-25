@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "TribeFind",
-    "slug": "snapchat-clone",
+    "slug": "tribefind",
     "version": "1.2.0",
     "platforms": [
       "ios",
@@ -32,7 +32,7 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to show nearby tribe members with shared interests.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.jfuginay.snapchatclone"
+      "bundleIdentifier": "com.jfuginay.tribefind"
     },
     "android": {
       "adaptiveIcon": {
@@ -40,7 +40,7 @@
         "backgroundColor": "#6366f1"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.jfuginay.snapchatclone",
+      "package": "com.jfuginay.tribefind",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
