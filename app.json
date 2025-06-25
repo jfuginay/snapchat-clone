@@ -55,7 +55,12 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_MEDIA_LOCATION"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png",
