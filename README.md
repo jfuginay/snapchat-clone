@@ -1,216 +1,192 @@
-# TribeFind - Discover Your Tribe Through Shared Interests
+# 🌟 TribeFind - Social Discovery Platform
 
-**AI-Enhanced Discovery Platform**
+> **Built with Incremental AI Development** - A React Native app demonstrating the power of iterative AI-assisted development
 
-TribeFind is a revolutionary social discovery platform that connects people through shared passions and interests. Built with AI-first principles at [EnginDearing.soy](https://tribefind.engindearing.soy/), TribeFind helps you discover your tribe by finding others who share your hobbies, skills, and interests in your local area through intelligent activity tracking and AI-powered content creation tools.
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/jfuginay/snapchat-clone)
+[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey.svg)](https://reactnative.dev/)
+[![Framework](https://img.shields.io/badge/framework-React%20Native%20%7C%20Expo-000.svg)](https://expo.dev/)
 
-## 🎯 The FIND Framework
-
-**FIND**: Find Interest Nurture Discovery
-
-**F** - **Find** people with shared interests and passions  
-**I** - **Interest** discovery through activities and hobbies  
-**N** - **Nurture** meaningful connections and relationships  
-**D** - **Discovery** of new experiences and growth opportunities  
-
-Visit us at: **[https://tribefind.engindearing.soy/](https://tribefind.engindearing.soy/)**
-
-## 🚀 TribeFind Discovery Features
-
-### ✅ Core Discovery Features
-- **🔍 Tribe Discovery** - Find nearby tribe-mates with shared interests using AI-enhanced matching
-- **🎯 Interest Discovery** - Explore activities through AI-powered recommendations and smart suggestions
-- **🗺️ Location Discovery** - Discover tribe members within configurable radius with real-time activity tracking
-- **🤝 Connection Discovery** - Connect with people who share your specific interests and skill levels
-- **📱 Smart Onboarding** - AI-guided profile creation with intelligent activity suggestions
-- **🔒 Privacy-First Discovery** - Granular controls for safe exploration and connection
-- **📊 Progress Discovery** - Track your growth with AI activity analysis and tribe insights
-
-### ✅ AI-Enhanced Technology
-- **Smart Authentication** - Intelligent user onboarding with automated profile enhancement
-- **AI Activity Tracking** - Automatic activity detection and progress monitoring
-- **Intelligent Content Creation** - AI-powered photo tagging, moment capture, and story generation
-- **Smart Recommendations** - Machine learning-driven tribe and activity suggestions
-- **Spatial Intelligence** - Advanced PostGIS queries enhanced with AI location analysis
-- **Dynamic Activity System** - AI-curated activity database with smart categorization
-
-### 🔄 Discovery Roadmap
-- AI-powered conversation starters and ice-breakers
-- Intelligent event creation based on shared interests
-- Smart mentorship matching with skill-based AI analysis
-- Predictive tribe growth analytics and insights
-- AI-generated content and activity challenges
-
-## 🛠 Tech Stack
-
-**Built with AI-First Principles at EnginDearing.soy**
-
-- **Frontend**: React Native with Expo
-- **State Management**: Redux Toolkit
-- **Backend**: Supabase (Auth, Database, Storage)
-- **Database**: PostgreSQL with PostGIS for spatial queries
-- **Location Services**: PostGIS ST_DWithin for nearby tribe discovery
-- **Maps**: React Native Maps with custom tribe member markers
-- **Storage**: Supabase Storage with Row Level Security
-- **Navigation**: React Navigation 6 with tab-based tribe discovery
-- **Camera**: Expo Camera for tribe moment capture
-
-## 📱 Setup Instructions
-
-### Prerequisites
-- Node.js 18+ and npm
-- Expo CLI (`npm install -g @expo/cli`)
-- iOS Simulator or Android Emulator (or Expo Go app)
-- Supabase account
-
-### 1. Clone and Install
-```bash
-git clone https://github.com/jfuginay/tribefind.git
-cd tribefind
-npm install
-```
-
-### 2. Supabase Setup for TribeFind
-1. Create a new project at [supabase.com](https://supabase.com)
-2. **Enable PostGIS Extension** for spatial tribe discovery
-3. Go to Project Settings → API to get your credentials
-4. Run the complete TribeFind database setup:
-   ```sql
-   -- Copy and paste contents of COMPLETE_DATABASE_SETUP.sql
-   -- This creates activities, user_activities, spatial indexes, and PostGIS functions
-   ```
-5. Set up photo storage bucket:
-   ```sql
-   -- Copy and paste contents of supabase-storage-setup.sql
-   ```
-
-### 3. Environment Configuration
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-2. Fill in your Supabase credentials in `.env`:
-   ```
-   EXPO_PUBLIC_SUPABASE_URL=your-supabase-url
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-
-### 4. Run the App
-```bash
-npx expo start
-```
-
-Scan the QR code with Expo Go (Android) or Camera app (iOS) to run on your device.
-
-## 🏗 TribeFind Project Structure
-
-```
-tribefind/
-├── screens/           # TribeFind screens (Auth, Camera, Home, Map, Profile)
-│   ├── MapScreen.tsx     # Nearby tribe member discovery with PostGIS
-│   ├── AuthScreen.tsx    # Beautiful TribeFind-branded authentication
-│   └── ProfileScreen.tsx # User profile with tribe stats
-├── components/        # Reusable tribe discovery components
-│   └── ActivitySelector.js # Interest and hobby selection
-├── src/
-│   ├── services/         # Location service with PostGIS integration
-│   ├── sql/             # PostGIS functions and activity schemas
-│   └── examples/        # Usage examples for tribe features
-├── store/            # Redux store for tribe state management
-├── services/         # Authentication and tribe services
-├── lib/              # Supabase configuration for TribeFind
-├── assets/           # TribeFind branding and icons
-└── *_SETUP.sql       # Complete database setup for tribe discovery
-```
-
-## 🔐 Security Features
-
-- ✅ Environment variables for all sensitive data
-- ✅ Row Level Security (RLS) policies on all database tables
-- ✅ User-specific photo storage with access controls
-- ✅ Signed URLs for secure image access
-- ✅ No hardcoded credentials in source code
-- ✅ Proper authentication flow with session management
-
-## 📊 TribeFind Database Schema
-
-### Core Tribe Discovery Tables
-- `users` - Extended profiles with PostGIS location and tribe stats
-- `activities` - Comprehensive activity/interest database with categories and icons
-- `user_activities` - User's selected interests with skill levels (beginner/intermediate/advanced)
-- `photos` - Tribe moment photos with cloud storage URLs
-- `friendships` - Tribe member connections and requests
-- `chat_rooms` - Tribe communication channels
-- `messages` - Tribe chat messages with metadata
-
-### PostGIS Spatial Features
-- **Location Column**: `GEOMETRY(POINT, 4326)` for precise coordinate storage
-- **Spatial Indexes**: GIST indexes for optimal nearby tribe member queries
-- **ST_DWithin Function**: Efficient radius-based tribe member discovery
-- **Distance Calculations**: Real-time distance sorting for nearby tribe members
-
-## 🚀 Deployment
-
-The app supports deployment via Expo Application Services (EAS):
-
-```bash
-# Build for iOS
-eas build --platform ios
-
-# Build for Android  
-eas build --platform android
-```
-
-Current deployment: [Expo Build Dashboard](https://expo.dev/accounts/jfuginay/projects/tribefind)
-
-## 🔧 Development
-
-### Debug Logs
-The app includes comprehensive debug logging:
-- Environment variable loading
-- Authentication state changes
-- Photo upload/download processes
-- Database connection status
-
-### Common Issues
-1. **Images not loading**: Check Supabase storage bucket configuration
-2. **Authentication fails**: Verify environment variables and Supabase setup
-3. **Camera not working**: Ensure proper permissions in app.json
-
-## 📖 TribeFind Documentation
-
-- [Complete Database Setup](COMPLETE_DATABASE_SETUP.sql) - PostGIS and activity tables
-- [Database Error Fix Guide](DATABASE_ERROR_FIX.md) - Troubleshooting setup issues
-- [MapScreen Implementation](MAP_SCREEN_FIX_GUIDE.md) - Nearby tribe member discovery
-- [Camera Implementation](CAMERA_SETUP_GUIDE.md) - Tribe moment capture
-- [Storage Configuration](STORAGE_SETUP_GUIDE.md) - Cloud photo storage
-- [Deployment Guide](DEPLOYMENT_GUIDE.md) - Expo deployment process
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-TribeFind is built with AI-first principles for connecting communities through shared interests. This project demonstrates modern React Native development with PostGIS spatial databases for social discovery platforms.
-
-## 🔗 TribeFind Links
-
-- **TribeFind Website**: [https://tribefind.engindearing.soy/](https://tribefind.engindearing.soy/)
-- **GitHub Repository**: https://github.com/jfuginay/tribefind
-- **Expo Project**: https://expo.dev/accounts/jfuginay/projects/tribefind
-- **EnginDearing.soy**: AI-First Engineering Principles
-- **Supabase Documentation**: https://supabase.com/docs
-- **PostGIS Documentation**: https://postgis.net/docs
+**TribeFind** helps you discover and connect with like-minded people nearby through shared interests and activities. Built using the **FIND Framework** - **Find Interest Nurture Discovery**.
 
 ---
 
-**Built with AI-First Principles at EnginDearing.soy**  
-🎯 **TribeFind** - Where innovation meets community  
-**Discovery**: AI-Enhanced Discovery Platform  
+## 🚀 **Try TribeFind Now!**
 
-*Discover your tribe through shared passions and AI-powered connections* ❤️ 
+### **📱 Install on Your Device**
+
+Test all features including **professional video recording** and **real-time social discovery**:
+
+#### **iOS (iPhone/iPad)**
+<div align="center">
+
+![iOS QR Code](https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://expo.dev/accounts/jfuginay/projects/snapchat-clone/builds/98fadb10-e1fb-469c-a886-4d75320936b7)
+
+**[📱 Direct Install Link](https://expo.dev/accounts/jfuginay/projects/snapchat-clone/builds/98fadb10-e1fb-469c-a886-4d75320936b7)**
+</div>
+
+#### **Android**
+<div align="center">
+
+![Android QR Code](https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://expo.dev/accounts/jfuginay/projects/snapchat-clone/builds/2844ed64-0217-4f71-af7a-cbb45a767640)
+
+**[🤖 Direct Install Link](https://expo.dev/accounts/jfuginay/projects/snapchat-clone/builds/2844ed64-0217-4f71-af7a-cbb45a767640)**
+</div>
+
+### **⚡ Quick Test (2 minutes)**
+1. **📷 Scan QR code** with your camera app
+2. **🔑 Sign in with Twitter** 
+3. **📸 Take a photo** and **🎥 record a video** (3s, 5s, 10s, or 30s!)
+4. **👥 Explore social features** and **📍 location discovery**
+
+**Need help?** Check out our [Quick Start Guide](TESTER_QUICK_START.md) or [Full Testing Guide](TESTING_GUIDE.md).
+
+---
+
+## 🎯 **Incremental AI Development Journey**
+
+This project showcases **incremental AI-assisted development** - building features step-by-step with AI guidance, resulting in production-ready code.
+
+### **Phase 1: Foundation** ✅
+- **Auth System**: Complete Twitter OAuth + Supabase integration
+- **Core Navigation**: Tab-based navigation with 5 main screens
+- **Profile Management**: User profiles with avatar upload
+- **Location Services**: Real-time location tracking with privacy controls
+
+### **Phase 2: Social Features** ✅
+- **Friend System**: Add/remove friends with real-time status
+- **Chat Integration**: Real-time messaging with Supabase
+- **Activities System**: Discover shared interests and activities
+- **Map Integration**: Find nearby tribe members with shared interests
+
+### **Phase 3: Media Capture** ✅ **[LATEST]**
+- **Photo Capture**: Full-featured camera with cloud storage
+- **Video Recording**: Professional video capture (3s, 5s, 10s, 30s clips)
+- **Media Gallery**: Grid-based photo/video galleries with playback
+- **Storage Integration**: Supabase storage with RLS policies
+
+### **Phase 4: Advanced Features** 🚧 **[COMING SOON]**
+- **Stories/Temporary Content**: Disappearing photos/videos
+- **Video Filters**: Real-time video effects and filters
+- **Group Activities**: Create and join group events
+- **Push Notifications**: Real-time activity notifications
+
+---
+
+## 🎥 **Latest Feature: Video Capture**
+
+Just implemented professional-grade video recording with:
+
+### **🎬 Recording Features**
+- **Multiple Durations**: 3, 5, 10, and 30-second clips
+- **Professional UI**: Full-screen recording interface with progress tracking
+- **Camera Controls**: Front/back camera switching with flash control
+- **Auto-Stop**: Automatic recording termination at selected duration
+
+### **📱 Media Management**
+- **Cloud Storage**: Videos uploaded to Supabase with user-specific folders
+- **Gallery View**: Grid-based video gallery with play button overlays
+- **Full-Screen Player**: Native video controls with seek, play, pause
+- **User Stats**: Track videos_shared count and snap_score points
+
+---
+
+## 🚀 **Quick Start (5 Minutes)**
+
+### Prerequisites
+- Node.js 18+ 
+- iOS device or Android device (for video features)
+- Supabase account
+
+### 1. Clone & Install
+```bash
+git clone <repository-url>
+cd snapchat-clone
+npm install
+```
+
+### 2. Environment Setup
+```bash
+# Copy environment template
+cp env-template.txt .env
+
+# Add your Supabase credentials to .env:
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Database Setup
+Run these SQL scripts in your Supabase SQL Editor:
+```bash
+# 1. Core database
+COMPLETE_DATABASE_SETUP.sql
+
+# 2. Storage buckets
+supabase-storage-setup.sql
+
+# 3. Video infrastructure (new!)
+create-videos-bucket.sql
+video-database-setup.sql
+```
+
+### 4. Development Build (Required for Video)
+```bash
+# iOS
+eas build --platform ios --profile development
+
+# Android  
+eas build --platform android --profile development
+```
+
+### 5. Test the App
+Install the development build on your device and test all features!
+
+---
+
+## 🛠 **Technology Stack**
+
+### **Frontend**
+- **React Native** with Expo SDK 53
+- **TypeScript** for type safety
+- **Redux Toolkit** for state management
+- **React Navigation** for routing
+
+### **Camera & Media**
+- **react-native-vision-camera** for professional video recording
+- **expo-camera** for photo capture
+- **expo-av** for video playback
+- **expo-media-library** for device storage
+
+### **Backend Services**
+- **Supabase** for database, auth, and storage
+- **PostGIS** for location-based queries
+- **Row Level Security** for data protection
+
+---
+
+## 🎯 **AI Development Methodology**
+
+This project demonstrates **incremental AI-assisted development**:
+
+### **✅ Iterative Feature Building**
+- Start with core functionality
+- Add features incrementally
+- Test and validate each step
+- Build on previous successes
+
+### **✅ AI-Guided Architecture**
+- AI helps design scalable patterns
+- Consistent code organization
+- Proper error handling throughout
+- Production-ready implementations
+
+### **✅ Comprehensive Documentation**
+- Every feature fully documented
+- Setup guides for quick onboarding
+- Troubleshooting for common issues
+- Clear next steps for expansion
+
+---
+
+**Built with ❤️ using incremental AI development**
+
+*TribeFind v1.3.0 - Find your tribe, nurture connections, discover together* 🌟 
