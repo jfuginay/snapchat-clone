@@ -96,12 +96,6 @@
           "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone to record audio for videos."
         }
       ],
-      [
-        "react-native-maps",
-        {
-          "enableGoogleMaps": true
-        }
-      ],
       "expo-web-browser"
     ],
     "extra": {
