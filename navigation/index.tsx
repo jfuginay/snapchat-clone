@@ -17,6 +17,8 @@ import LocationSettingsScreen from '../screens/LocationSettingsScreen'
 import HomeLocationSettingsScreen from '../screens/HomeLocationSettingsScreen'
 import ActivitiesScreen from '../screens/ActivitiesScreen'
 import UserSearchScreen from '../screens/UserSearchScreen'
+import ChatListScreen from '../screens/ChatListScreen'
+import ChatScreen from '../screens/ChatScreen'
 
 const Stack = createStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -32,8 +34,8 @@ function TabNavigator() {
             iconName = focused ? 'home' : 'home-outline'
           } else if (route.name === 'Camera') {
             iconName = focused ? 'camera' : 'camera-outline'
-          } else if (route.name === 'Friends') {
-            iconName = focused ? 'people' : 'people-outline'
+          } else if (route.name === 'Chat') {
+            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline'
           } else if (route.name === 'Map') {
             iconName = focused ? 'map' : 'map-outline'
           } else if (route.name === 'Profile') {
@@ -66,10 +68,18 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen 
-        name="Friends" 
-        component={UserSearchScreen}
+        name="Chat" 
+        component={ChatListScreen}
         options={{
-          headerShown: false, // Hide header for custom gradient design
+          title: 'Tribe Chat',
+          headerStyle: {
+            backgroundColor: '#6366f1',
+          },
+          headerTitleStyle: {
+            color: '#fff',
+            fontWeight: 'bold',
+          },
+          headerTintColor: '#fff',
         }}
       />
       <Tab.Screen name="Map" component={MapScreen} />
@@ -162,6 +172,29 @@ export default function Navigation() {
               component={ActivitiesScreen}
               options={{
                 presentation: 'modal',
+                headerShown: false, // Using custom header in the component
+              }}
+            />
+            <Stack.Screen 
+              name="UserSearch" 
+              component={UserSearchScreen}
+              options={{
+                headerShown: true,
+                title: 'Find Friends',
+                headerStyle: {
+                  backgroundColor: '#6366f1',
+                },
+                headerTitleStyle: {
+                  color: '#fff',
+                  fontWeight: 'bold',
+                },
+                headerTintColor: '#fff',
+              }}
+            />
+            <Stack.Screen 
+              name="ChatScreen" 
+              component={ChatScreen}
+              options={{
                 headerShown: false, // Using custom header in the component
               }}
             />

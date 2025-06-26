@@ -9,6 +9,7 @@ import {
   Image,
   StatusBar,
   Dimensions,
+  Modal,
 } from 'react-native'
 import { CameraView, CameraType, FlashMode, useCameraPermissions } from 'expo-camera'
 import * as MediaLibrary from 'expo-media-library'
@@ -16,16 +17,21 @@ import * as FileSystem from 'expo-file-system'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store'
 import { supabase } from '../lib/supabase'
+import VideoCapture from '../components/VideoCapture'
 
 const { width, height } = Dimensions.get('window')
 
+type CameraMode = 'photo' | 'video'
+
 export default function CameraScreen() {
+  const [mode, setMode] = useState<CameraMode>('photo')
   const [facing, setFacing] = useState<CameraType>('back')
   const [flash, setFlash] = useState<FlashMode>('off')
   const [permission, requestPermission] = useCameraPermissions()
   const [mediaLibraryPermission, setMediaLibraryPermission] = useState<MediaLibrary.PermissionResponse | null>(null)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [showVideoCapture, setShowVideoCapture] = useState(false)
   const cameraRef = useRef<CameraView>(null)
   const { user } = useAppSelector((state: any) => state.auth)
 
@@ -55,7 +61,7 @@ export default function CameraScreen() {
         <View style={styles.permissionContainer}>
           <Text style={styles.permissionTitle}>📸 Camera Access</Text>
           <Text style={styles.permissionText}>
-            We need access to your camera to take photos
+            We need access to your camera to take photos and videos
           </Text>
           <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
             <Text style={styles.permissionButtonText}>Grant Camera Permission</Text>
@@ -82,6 +88,16 @@ export default function CameraScreen() {
       case 'on': return 'flash'
       case 'auto': return 'flash-outline'
       default: return 'flash-off'
+    }
+  }
+
+  const toggleMode = () => {
+    if (mode === 'photo') {
+      setMode('video')
+      setShowVideoCapture(true)
+    } else {
+      setMode('photo')
+      setShowVideoCapture(false)
     }
   }
 
@@ -290,10 +306,35 @@ export default function CameraScreen() {
     }
   }
 
-
-
   const discardPhoto = () => {
     setCapturedPhoto(null)
+  }
+
+  const handleVideoRecorded = (videoUri: string) => {
+    console.log('Video recorded successfully:', videoUri)
+    setShowVideoCapture(false)
+    setMode('photo')
+  }
+
+  const handleCloseVideoCapture = () => {
+    setShowVideoCapture(false)
+    setMode('photo')
+  }
+
+  // Show video capture modal
+  if (showVideoCapture) {
+    return (
+      <Modal
+        visible={showVideoCapture}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <VideoCapture
+          onVideoRecorded={handleVideoRecorded}
+          onClose={handleCloseVideoCapture}
+        />
+      </Modal>
+    )
   }
 
   // Show photo preview if photo was captured
@@ -345,14 +386,42 @@ export default function CameraScreen() {
           </View>
         </View>
 
+        {/* Mode Selector */}
+        <View style={styles.modeSelector}>
+          <TouchableOpacity
+            style={[styles.modeButton, mode === 'photo' && styles.activeModeButton]}
+            onPress={() => setMode('photo')}
+          >
+            <Ionicons name="camera" size={20} color={mode === 'photo' ? '#000' : 'white'} />
+            <Text style={[styles.modeText, mode === 'photo' && styles.activeModeText]}>Photo</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.modeButton, mode === 'video' && styles.activeModeButton]}
+            onPress={toggleMode}
+          >
+            <Ionicons name="videocam" size={20} color={mode === 'video' ? '#000' : 'white'} />
+            <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>Video</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Bottom Controls */}
         <View style={styles.bottomControls}>
           <TouchableOpacity style={styles.galleryButton}>
             <Ionicons name="images" size={24} color="white" />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-            <View style={styles.captureButtonInner} />
+          <TouchableOpacity 
+            style={styles.captureButton} 
+            onPress={mode === 'photo' ? takePicture : toggleMode}
+          >
+            <View style={[styles.captureButtonInner, mode === 'video' && styles.videoCaptureButton]}>
+              <Ionicons 
+                name={mode === 'photo' ? 'camera' : 'videocam'} 
+                size={24} 
+                color={mode === 'photo' ? '#000' : 'white'} 
+              />
+            </View>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
@@ -429,6 +498,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+  modeSelector: {
+    position: 'absolute',
+    top: 100,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  activeModeButton: {
+    backgroundColor: '#FFFC00',
+  },
+  modeText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 6,
+  },
+  activeModeText: {
+    color: '#000',
+  },
   bottomControls: {
     position: 'absolute',
     bottom: 40,
@@ -462,6 +561,11 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#FFFC00',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoCaptureButton: {
+    backgroundColor: '#ff4444',
   },
   flipButton: {
     width: 44,
