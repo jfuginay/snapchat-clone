@@ -129,11 +129,11 @@ export default function ProfileScreen() {
   }
 
   const goToHomeLocationSettings = () => {
-    navigation.navigate('HomeLocationSettingsScreen' as never)
+    navigation.navigate('HomeLocationSettings' as never)
   }
 
   const goToActivitiesSettings = () => {
-    navigation.navigate('ActivitiesScreen' as never)
+    navigation.navigate('Activities' as never)
   }
 
   const handleTwitterLink = async () => {
