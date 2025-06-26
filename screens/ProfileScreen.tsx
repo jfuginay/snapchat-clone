@@ -17,15 +17,19 @@ import {
 import { useAppSelector } from '../store'
 import { useAuth } from '../services/AuthService'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
+import type { NavigationProp } from '@react-navigation/native'
 import { supabase } from '../lib/supabase'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system'
 import { Ionicons } from '@expo/vector-icons'
+import type { RootStackParamList } from '../types/navigation'
+
+type NavigationProps = NavigationProp<RootStackParamList>
 
 export default function ProfileScreen() {
   const { user } = useAppSelector((state) => state.auth)
   const { signOut, linkTwitterAccount, updateProfile } = useAuth()
-  const navigation = useNavigation()
+  const navigation = useNavigation<NavigationProps>()
   const [refreshing, setRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [twitterLinking, setTwitterLinking] = useState(false)
@@ -121,15 +125,15 @@ export default function ProfileScreen() {
   }
 
   const goToLocationSettings = () => {
-    navigation.navigate('LocationSettings' as never)
+    navigation.navigate('LocationSettingsScreen' as never)
   }
 
   const goToHomeLocationSettings = () => {
-    navigation.navigate('HomeLocationSettings' as never)
+    navigation.navigate('HomeLocationSettingsScreen' as never)
   }
 
   const goToActivitiesSettings = () => {
-    navigation.navigate('Activities' as never)
+    navigation.navigate('ActivitiesScreen' as never)
   }
 
   const handleTwitterLink = async () => {

@@ -1,11 +1,15 @@
-import React from 'react'
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAppSelector } from '../store'
 import PhotoGallery from '../components/PhotoGallery'
+import VideoGallery from '../components/VideoGallery'
+
+type MediaTab = 'photos' | 'videos'
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state: any) => state.auth)
+  const [activeTab, setActiveTab] = useState<MediaTab>('photos')
 
   return (
     <LinearGradient
@@ -19,8 +23,33 @@ export default function HomeScreen() {
             <Text style={styles.subtitle}>Your captured moments</Text>
           </View>
 
+          {/* Tab Selector */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'photos' && styles.activeTab]}
+              onPress={() => setActiveTab('photos')}
+            >
+              <Text style={[styles.tabText, activeTab === 'photos' && styles.activeTabText]}>
+                📸 Photos
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'videos' && styles.activeTab]}
+              onPress={() => setActiveTab('videos')}
+            >
+              <Text style={[styles.tabText, activeTab === 'videos' && styles.activeTabText]}>
+                🎥 Videos
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.feed}>
-            <PhotoGallery />
+            {activeTab === 'photos' ? (
+              <PhotoGallery />
+            ) : (
+              <VideoGallery />
+            )}
           </View>
         </View>
       </SafeAreaView>
@@ -37,27 +66,49 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    paddingTop: 20,
   },
   header: {
-    padding: 20,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   welcome: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: 'white',
     marginBottom: 5,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
   },
   subtitle: {
     fontSize: 16,
-    color: '#F0F0F0',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 25,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  activeTabText: {
+    color: '#6366f1',
   },
   feed: {
     flex: 1,
-    paddingHorizontal: 0,
-    paddingBottom: 20,
   },
 }) 

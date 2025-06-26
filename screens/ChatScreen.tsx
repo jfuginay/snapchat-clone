@@ -11,11 +11,17 @@ import {
   Alert,
   ActivityIndicator,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAppSelector } from '../store';
+import type { RootStackParamList } from '../types/navigation';
+
+type NavigationProps = NavigationProp<RootStackParamList>;
+type ChatScreenRouteProp = RouteProp<RootStackParamList, 'ChatScreen'>;
 
 interface Message {
   id: string;
@@ -41,17 +47,8 @@ interface ChatUser {
   last_active: string;
 }
 
-type RootStackParamList = {
-  ChatScreen: {
-    chatRoomId?: string;
-    otherUser?: ChatUser;
-  };
-};
-
-type ChatScreenRouteProp = RouteProp<RootStackParamList, 'ChatScreen'>;
-
 const ChatScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProps>();
   const route = useRoute<ChatScreenRouteProp>();
   const user = useAppSelector((state) => state.auth.user);
 
@@ -69,7 +66,6 @@ const ChatScreen: React.FC = () => {
 
   const { chatRoomId, otherUser } = route.params || {};
 
-  // Load messages when screen mounts
   useEffect(() => {
     if (chatRoomId) {
       loadMessages();
@@ -81,7 +77,6 @@ const ChatScreen: React.FC = () => {
     };
   }, [chatRoomId]);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
@@ -90,66 +85,49 @@ const ChatScreen: React.FC = () => {
     }
   }, [messages.length]);
 
-  /**
-   * Load messages for current chat room
-   */
   const loadMessages = async () => {
     if (!chatRoomId) return;
 
     try {
       setLoading(true);
-
-      const { data: messagesData, error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
-        .select(`
-          *,
-          sender:users!messages_sender_id_fkey (
-            username,
-            display_name,
-            avatar
-          )
-        `)
+        .select(`*, sender:users!messages_sender_id_fkey(username, display_name, avatar)`)
         .eq('chat_room_id', chatRoomId)
         .order('created_at', { ascending: true })
         .limit(100);
 
-      if (error) {
-        console.error('Error loading messages:', error);
-        Alert.alert('Error', 'Failed to load messages.');
-        return;
-      }
-
-      const formattedMessages = messagesData?.map(msg => ({
-        ...msg,
-        sender: Array.isArray(msg.sender) ? msg.sender[0] : msg.sender,
-      })) || [];
-
-      setMessages(formattedMessages);
+      if (error) throw error;
+      
+      // Debug logging
+      console.log('🔍 DEBUG: Current user ID:', user?.id);
+      console.log('🔍 DEBUG: Chat room ID:', chatRoomId);
+      console.log('🔍 DEBUG: Loaded messages:', data ? data.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        sender_id: msg.sender_id,
+        sender_name: msg.sender?.display_name
+      })) : []);
+      
+      setMessages(data || []);
     } catch (error) {
       console.error('Error loading messages:', error);
+      Alert.alert('Error', 'Failed to load messages.');
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Setup real-time subscriptions
-   */
   const setupRealtimeSubscriptions = () => {
     if (!chatRoomId || !user) return;
 
-    // Messages subscription
     messagesSubscriptionRef.current = supabase
       .channel(`messages-${chatRoomId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `chat_room_id=eq.${chatRoomId}`,
-      }, handleNewMessage)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_room_id=eq.${chatRoomId}` },
+        handleNewMessage
+      )
       .subscribe();
 
-    // Typing indicators subscription
     typingSubscriptionRef.current = supabase
       .channel(`typing-${chatRoomId}`)
       .on('presence', { event: 'sync' }, () => {
@@ -157,305 +135,175 @@ const ChatScreen: React.FC = () => {
         const typingUsers = Object.keys(newState).filter(id => id !== user.id);
         setOtherUserTyping(typingUsers.length > 0);
       })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        if (key !== user.id) {
-          setOtherUserTyping(true);
-        }
-      })
-      .on('presence', { event: 'leave' }, ({ key }) => {
-        if (key !== user.id) {
-          setOtherUserTyping(false);
-        }
-      })
       .subscribe();
   };
 
-  /**
-   * Handle new message from real-time subscription
-   */
   const handleNewMessage = async (payload: any) => {
+    if (!user) return; // Early return if no user
+    
     const newMessage = payload.new;
-
-    // Fetch sender details
+    
+    // Get sender data
     const { data: senderData } = await supabase
       .from('users')
       .select('username, display_name, avatar')
       .eq('id', newMessage.sender_id)
       .single();
 
-    const messageWithSender = {
-      ...newMessage,
-      sender: senderData,
-    };
+    const messageWithSender = { ...newMessage, sender: senderData };
 
-    setMessages(prev => [...prev, messageWithSender]);
+    setMessages(prev => {
+      // If this message is from the current user, remove any optimistic messages
+      // and replace with the real message from the database
+      if (newMessage.sender_id === user.id) {
+        // Remove any temporary messages with the same content
+        const filteredMessages = prev.filter(msg => 
+          !(msg.id.startsWith('temp-') && msg.content === newMessage.content && msg.sender_id === user.id)
+        );
+        
+        // Check if this exact message already exists (prevent duplicates)
+        const messageExists = filteredMessages.some(msg => msg.id === newMessage.id);
+        if (messageExists) {
+          return prev; // Don't add duplicate
+        }
+        
+        return [...filteredMessages, messageWithSender];
+      } else {
+        // For messages from other users, just check for duplicates
+        const messageExists = prev.some(msg => msg.id === newMessage.id);
+        if (messageExists) {
+          return prev; // Don't add duplicate
+        }
+        
+        return [...prev, messageWithSender];
+      }
+    });
   };
 
-  /**
-   * Send a new message
-   */
   const sendMessage = async () => {
     if (!messageText.trim() || !chatRoomId || !user || sending) return;
-
     const content = messageText.trim();
     setMessageText('');
     setSending(true);
 
     try {
-      // Optimistically add message to UI
+      // Create optimistic message
       const optimisticMessage: Message = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${content.slice(0, 10)}`, // More unique ID
         chat_room_id: chatRoomId,
         sender_id: user.id,
         content,
         message_type: 'text',
         created_at: new Date().toISOString(),
-        sender: {
-          username: user.username,
-          display_name: user.display_name,
-          avatar: user.avatar,
-        },
+        sender: { username: user.username, display_name: user.display_name, avatar: user.avatar },
       };
-
+      
+      // Add optimistic message immediately
       setMessages(prev => [...prev, optimisticMessage]);
 
       // Send to database
       const { error } = await supabase
         .from('messages')
-        .insert({
-          chat_room_id: chatRoomId,
-          sender_id: user.id,
-          content,
-          message_type: 'text',
+        .insert({ 
+          chat_room_id: chatRoomId, 
+          sender_id: user.id, 
+          content 
         });
 
       if (error) {
         console.error('Error sending message:', error);
-        // Remove optimistic message on error
+        // Remove the optimistic message on error
         setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
         Alert.alert('Error', 'Failed to send message.');
-        setMessageText(content); // Restore message text
-      } else {
-        // Reload messages to show the new one
-        loadMessages();
+        setMessageText(content);
       }
-
-      // Update chat room timestamp
-      await supabase
-        .from('chat_rooms')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', chatRoomId);
-
+      // Note: On success, the real message will come through handleNewMessage
+      // and will replace the optimistic message
+      
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message.');
-      setMessageText(content); // Restore message text
+      setMessageText(content);
     } finally {
       setSending(false);
     }
   };
 
-  /**
-   * Handle typing indicator
-   */
-  const handleTyping = useCallback(() => {
-    if (!chatRoomId || !user) return;
-
-    if (!isTyping) {
-      setIsTyping(true);
-      // Send typing indicator
-      typingSubscriptionRef.current?.track({
-        user_id: user.id,
-        typing: true,
-      });
-    }
-
-    // Clear existing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    // Set new timeout to stop typing indicator
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-      typingSubscriptionRef.current?.untrack();
-    }, 2000);
-  }, [isTyping, chatRoomId, user]);
-
-  /**
-   * Cleanup subscriptions and timeouts
-   */
   const cleanup = () => {
-    if (messagesSubscriptionRef.current) {
-      messagesSubscriptionRef.current.unsubscribe();
+    if (messagesSubscriptionRef.current) messagesSubscriptionRef.current.unsubscribe();
+    if (typingSubscriptionRef.current) typingSubscriptionRef.current.unsubscribe();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+  };
+  
+  const renderAvatar = (avatarValue: string | undefined, size: number) => {
+    const isUrl = avatarValue?.startsWith('http');
+    if (isUrl) {
+      return <Image source={{ uri: avatarValue }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#E5E7EB' }} />;
     }
-    if (typingSubscriptionRef.current) {
-      typingSubscriptionRef.current.unsubscribe();
-    }
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    return <Text style={{ fontSize: size * 0.8, textAlign: 'center' }}>{avatarValue || '👤'}</Text>;
   };
 
-  /**
-   * Get time display for message
-   */
-  const getTimeDisplay = (timestamp: string): string => {
-    const messageTime = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - messageTime.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'now';
-    if (diffMins < 60) return `${diffMins}m`;
-    if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays < 7) return `${diffDays}d`;
-    return messageTime.toLocaleDateString();
-  };
-
-  /**
-   * Render individual message
-   */
-  const renderMessage = ({ item: message }: { item: Message }) => {
-    const isMyMessage = message.sender_id === user?.id;
-    const showSender = !isMyMessage && message.sender;
-
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isMyMessage = item.sender_id === user?.id;
+    
+    // Debug logging
+    console.log('🔍 DEBUG: Message:', {
+      content: item.content,
+      sender_id: item.sender_id,
+      current_user_id: user?.id,
+      isMyMessage,
+      sender_name: item.sender?.display_name
+    });
+    
     return (
-      <View style={[
-        styles.messageContainer,
-        isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer
-      ]}>
-        {showSender && (
+      <View style={[styles.messageContainer, isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer]}>
+        {!isMyMessage && (
           <View style={styles.senderInfo}>
-            <Text style={styles.senderAvatar}>{message.sender?.avatar}</Text>
-            <Text style={styles.senderName}>{message.sender?.display_name}</Text>
+            {renderAvatar(item.sender?.avatar, 20)}
+            <Text style={styles.senderName}>{item.sender?.display_name}</Text>
           </View>
         )}
-        <View style={[
-          styles.messageBubble,
-          isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble
-        ]}>
-          <Text style={[
-            styles.messageText,
-            isMyMessage ? styles.myMessageText : styles.otherMessageText
-          ]}>
-            {message.content}
-          </Text>
-          <Text style={[
-            styles.messageTime,
-            isMyMessage ? styles.myMessageTime : styles.otherMessageTime
-          ]}>
-            {getTimeDisplay(message.created_at)}
-          </Text>
+        <View style={[styles.messageBubble, isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble]}>
+          <Text style={isMyMessage ? styles.myMessageText : styles.otherMessageText}>{item.content}</Text>
         </View>
       </View>
     );
   };
-
-  /**
-   * Render typing indicator
-   */
-  const renderTypingIndicator = () => {
-    if (!otherUserTyping) return null;
-
-    return (
-      <View style={styles.typingContainer}>
-        <View style={styles.typingBubble}>
-          <View style={styles.typingDots}>
-            <View style={styles.typingDot} />
-            <View style={styles.typingDot} />
-            <View style={styles.typingDot} />
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  /**
-   * Render header
-   */
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color="#1F2937" />
-      </TouchableOpacity>
-      
-      <View style={styles.headerInfo}>
-        <Text style={styles.headerAvatar}>{otherUser?.avatar || '👤'}</Text>
-        <View style={styles.headerText}>
-          <Text style={styles.headerName}>{otherUser?.display_name || 'Unknown'}</Text>
-          <Text style={styles.headerStatus}>
-            {otherUser?.is_online ? 'Online' : 'Offline'}
-          </Text>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.headerAction}>
-        <Ionicons name="ellipsis-vertical" size={24} color="#6B7280" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Loading messages...</Text>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        {renderHeader()}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={90}>
+        <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color="#1F2937" /></TouchableOpacity>
+            <View style={styles.headerInfo}>
+                {renderAvatar(otherUser?.avatar, 36)}
+                <View>
+                    <Text style={styles.headerName}>{otherUser?.display_name}</Text>
+                    <Text style={styles.headerStatus}>{otherUser?.is_online ? 'Online' : 'Offline'}</Text>
+                </View>
+            </View>
+        </View>
         
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={item => item.id}
-          style={styles.messagesList}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-          ListFooterComponent={renderTypingIndicator}
-        />
+        {loading ? <ActivityIndicator style={{ flex: 1 }} size="large" /> : (
+            <FlatList
+                data={messages}
+                renderItem={renderMessage}
+                keyExtractor={item => item.id}
+                style={styles.messagesList}
+                contentContainerStyle={{ paddingVertical: 10 }}
+            />
+        )}
 
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
             placeholder="Type a message..."
             value={messageText}
-            onChangeText={(text) => {
-              setMessageText(text);
-              handleTyping();
-            }}
+            onChangeText={setMessageText}
             multiline
-            maxLength={1000}
-            placeholderTextColor="#9CA3AF"
           />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (!messageText.trim() || sending) && styles.sendButtonDisabled
-            ]}
-            onPress={sendMessage}
-            disabled={!messageText.trim() || sending}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Ionicons name="send" size={20} color="#FFFFFF" />
-            )}
+          <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={!messageText.trim() || sending}>
+            {sending ? <ActivityIndicator color="#fff" /> : <Ionicons name="send" size={20} color="#FFFFFF" />}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -464,183 +312,26 @@ const ChatScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    marginRight: 12,
-    padding: 4,
-  },
-  headerInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerAvatar: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  headerStatus: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  headerAction: {
-    padding: 8,
-  },
-  messagesList: {
-    flex: 1,
-  },
-  messagesContent: {
-    paddingVertical: 16,
-  },
-  messageContainer: {
-    marginHorizontal: 16,
-    marginVertical: 4,
-  },
-  myMessageContainer: {
-    alignItems: 'flex-end',
-  },
-  otherMessageContainer: {
-    alignItems: 'flex-start',
-  },
-  senderInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    marginLeft: 8,
-  },
-  senderAvatar: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  senderName: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  messageBubble: {
-    maxWidth: '80%',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  myMessageBubble: {
-    backgroundColor: '#3B82F6',
-    borderBottomRightRadius: 4,
-  },
-  otherMessageBubble: {
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  myMessageText: {
-    color: '#FFFFFF',
-  },
-  otherMessageText: {
-    color: '#1F2937',
-  },
-  messageTime: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  myMessageTime: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'right',
-  },
-  otherMessageTime: {
-    color: '#9CA3AF',
-  },
-  typingContainer: {
-    alignItems: 'flex-start',
-    marginHorizontal: 16,
-    marginVertical: 8,
-  },
-  typingBubble: {
-    backgroundColor: '#E5E7EB',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  typingDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#9CA3AF',
-    marginHorizontal: 2,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  textInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    maxHeight: 100,
-    fontSize: 16,
-    backgroundColor: '#F9FAFB',
-    marginRight: 12,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
-  },
+    container: { flex: 1, backgroundColor: '#F9FAFB' },
+    header: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+    backButton: { padding: 4, marginRight: 8 },
+    headerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    headerName: { fontSize: 16, fontWeight: '600', marginLeft: 10 },
+    headerStatus: { fontSize: 12, color: '#6B7280', marginLeft: 10 },
+    messagesList: { flex: 1, paddingHorizontal: 10 },
+    messageContainer: { marginVertical: 5, maxWidth: '80%' },
+    myMessageContainer: { alignSelf: 'flex-end' },
+    otherMessageContainer: { alignSelf: 'flex-start' },
+    senderInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, marginLeft: 4 },
+    senderName: { fontSize: 12, color: '#6B7280', marginLeft: 6 },
+    messageBubble: { padding: 12, borderRadius: 18 },
+    myMessageBubble: { backgroundColor: '#3B82F6', borderBottomRightRadius: 4 },
+    otherMessageBubble: { backgroundColor: '#E5E7EB', borderBottomLeftRadius: 4 },
+    myMessageText: { color: '#FFFFFF', fontSize: 16 },
+    otherMessageText: { color: '#1F2937', fontSize: 16 },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', padding: 8, borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: '#FFFFFF' },
+    textInput: { flex: 1, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, marginRight: 8 },
+    sendButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center' },
 });
 
 export default ChatScreen; 
