@@ -1,4 +1,72 @@
-# Quick Android Emulator Commands (run after Android Studio setup):
-emulator -list-avds  # List available emulators
-emulator @TribeFind_Test_Device &  # Start emulator in background
-npx expo start --android  # Run TribeFind on Android
+# 🚀 TribeFind Android Build & Development Guide
+
+## ✅ COMPLETED SETUP:
+# ✅ EAS Build configured
+# ✅ Android development build created: https://expo.dev/accounts/jfuginay/projects/snapchat-clone/builds/045f5ac3-d35d-4bfb-abec-85f0e3dce6b2
+# ✅ App installed on emulator: com.jfuginay.tribefind
+# ✅ TribeFind_Test_Device emulator running
+
+## 🏗️ BUILD COMMANDS:
+
+# Development Build (for testing native features):
+eas build --platform android --profile development
+
+# Fast Development Build (uses cache):
+eas build:dev --platform android
+
+# Preview Build (for sharing with testers):
+eas build --platform android --profile preview
+
+# Production Build (for app store):
+eas build --platform android --profile production
+
+## 📱 EMULATOR COMMANDS:
+
+# List available emulators:
+emulator -list-avds
+
+# Start TribeFind emulator:
+emulator @TribeFind_Test_Device &
+
+# Check connected devices:
+adb devices
+
+# Install APK manually (if needed):
+adb install path/to/your-app.apk
+
+# Check installed packages:
+adb shell pm list packages | grep tribefind
+
+## 🔄 DEVELOPMENT WORKFLOW:
+
+# 1. Start development server:
+npx expo start --dev-client
+
+# 2. Connect to your development build:
+# - Shake device/emulator
+# - Enter server URL manually or scan QR
+
+# 3. For code changes that need rebuild:
+eas build:dev --platform android
+
+## 📤 SHARING BUILDS:
+
+# Current install link:
+# https://expo.dev/accounts/jfuginay/projects/snapchat-clone/builds/045f5ac3-d35d-4bfb-abec-85f0e3dce6b2
+
+# Send this link to testers to install on their Android devices
+# or have them scan the QR code from the build page
+
+## 🛠️ TROUBLESHOOTING:
+
+# If app won't connect to dev server:
+adb reverse tcp:8081 tcp:8081
+
+# Clear app data:
+adb shell pm clear com.jfuginay.tribefind
+
+# Restart emulator:
+adb reboot
+
+# View app logs:
+adb logcat | grep TribeFind
