@@ -32,7 +32,12 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to show nearby tribe members with shared interests.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.jfuginay.tribefind"
+      "bundleIdentifier": "com.jfuginay.tribefind",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0"
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -89,6 +94,12 @@
           "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera to record videos and capture photos.",
           "enableMicrophonePermission": true,
           "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone to record audio for videos."
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "enableGoogleMaps": true
         }
       ],
       "expo-web-browser"
