@@ -38,7 +38,7 @@ export default function LocationSettingsScreen() {
             </View>
             <Switch
               value={shareLocation}
-              onValueChange={(value) => dispatch(setShareLocation(value))}
+              onValueChange={(value) => { dispatch(setShareLocation(value)) }}
               trackColor={{ false: '#ccc', true: '#FFFC00' }}
               thumbColor={'white'}
             />
@@ -53,7 +53,7 @@ export default function LocationSettingsScreen() {
             </View>
             <Switch
               value={showPreciseLocation}
-              onValueChange={(value) => dispatch(setShowPreciseLocation(value))}
+              onValueChange={(value) => { dispatch(setShowPreciseLocation(value)) }}
               trackColor={{ false: '#ccc', true: '#FFFC00' }}
               thumbColor={'white'}
             />
@@ -98,7 +98,7 @@ export default function LocationSettingsScreen() {
             <Switch
               value={ghostMode.enabled}
               onValueChange={(value) => 
-                dispatch(setGhostMode({ enabled: value, duration: '1h' }))
+                { dispatch(setGhostMode({ enabled: value, duration: '1h' })) }
               }
               trackColor={{ false: '#ccc', true: '#FFFC00' }}
               thumbColor={'white'}

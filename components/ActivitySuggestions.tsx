@@ -121,7 +121,7 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
    */
   const handleRejectSuggestion = async (suggestion: ActivitySuggestion, reason?: string) => {
     try {
-      await aiLocationService.updateSuggestionStatus(suggestion.id, 'rejected', reason);
+      await (aiLocationService as any).updateSuggestionStatus(suggestion.id, 'rejected', reason);
       
       // Remove from local state
       setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
@@ -152,7 +152,7 @@ const ActivitySuggestions: React.FC<ActivitySuggestionsProps> = ({
     }
 
     try {
-      await aiLocationService.updateSuggestionStatus(
+      await (aiLocationService as any).updateSuggestionStatus(
         selectedSuggestion.id,
         'completed',
         feedback || null,

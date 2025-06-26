@@ -22,10 +22,13 @@ import { useAuth } from '../services/AuthService';
  */
 const ActivitySelector = ({ 
   onSelectionChange = () => {}, 
+  onNext = null, // New prop for handling Next button press
   showCategories = true,
   allowMultiSelect = true,
   maxSelections = null,
-  selectedCategory = null 
+  selectedCategory = null,
+  nextButtonText = "Next", // Customizable button text
+  minSelections = 1 // Minimum selections required to show Next button
 }) => {
   const { user } = useAuth();
   
@@ -319,6 +322,23 @@ const ActivitySelector = ({
   }, []);
 
   /**
+   * Handle Next button press
+   */
+  const handleNext = () => {
+    if (onNext) {
+      const selectedIds = Array.from(selectedActivities.keys());
+      onNext(selectedIds, selectedActivities);
+    }
+  };
+
+  /**
+   * Check if Next button should be shown
+   */
+  const shouldShowNextButton = () => {
+    return onNext && selectedActivities.size >= minSelections;
+  };
+
+  /**
    * Filter activities based on search and category
    */
   const getFilteredActivities = () => {
@@ -545,6 +565,21 @@ const ActivitySelector = ({
         showsVerticalScrollIndicator={false}
       />
 
+      {/* Floating Next Button */}
+      {shouldShowNextButton() && (
+        <View style={styles.floatingButtonContainer}>
+          <TouchableOpacity
+            style={styles.floatingNextButton}
+            onPress={handleNext}
+            activeOpacity={0.8}
+          >
+            <View style={styles.glowEffect} />
+            <Text style={styles.floatingButtonText}>{nextButtonText}</Text>
+            <Text style={styles.floatingButtonIcon}>✨</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Saving Indicator */}
       {saving && (
         <View style={styles.savingIndicator}>
@@ -752,6 +787,54 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     color: '#374151',
+  },
+  // Floating Next Button styles
+  floatingButtonContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+  },
+  floatingNextButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 25,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  glowEffect: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    backgroundColor: '#3B82F6',
+    borderRadius: 27,
+    opacity: 0.6,
+    zIndex: -1,
+  },
+  floatingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginRight: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  floatingButtonIcon: {
+    fontSize: 18,
+    color: '#FFFFFF',
   },
   // Modal styles
   modalOverlay: {
