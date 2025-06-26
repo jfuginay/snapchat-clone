@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store'
 import { supabase } from '../lib/supabase'
 import VideoCapture from '../components/VideoCapture'
+import ImageFilters from '../components/ImageFilters'
 
 const { width, height } = Dimensions.get('window')
 
@@ -32,6 +33,8 @@ export default function CameraScreen() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [showVideoCapture, setShowVideoCapture] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filteredPhotoUri, setFilteredPhotoUri] = useState<string | null>(null)
   const cameraRef = useRef<CameraView>(null)
   const { user } = useAppSelector((state: any) => state.auth)
 
@@ -119,15 +122,16 @@ export default function CameraScreen() {
     }
   }
 
-  const savePhoto = async () => {
-    if (!capturedPhoto) return
+  const savePhoto = async (photoUri?: string) => {
+    const uriToSave = photoUri || filteredPhotoUri || capturedPhoto
+    if (!uriToSave) return
 
     try {
       setIsUploading(true)
 
       // Save to device gallery
       if (mediaLibraryPermission?.granted) {
-        await MediaLibrary.saveToLibraryAsync(capturedPhoto)
+        await MediaLibrary.saveToLibraryAsync(uriToSave)
       }
 
       // Upload to Supabase if user is logged in
@@ -138,10 +142,18 @@ export default function CameraScreen() {
           userObject: user
         })
         try {
-          await uploadToSupabase(capturedPhoto)
+          await uploadToSupabase(uriToSave)
           Alert.alert('Success!', 'Photo saved to gallery and cloud storage', [
-            { text: 'Take Another', onPress: () => setCapturedPhoto(null) },
-            { text: 'Done', onPress: () => setCapturedPhoto(null) }
+            { text: 'Take Another', onPress: () => {
+              setCapturedPhoto(null)
+              setFilteredPhotoUri(null)
+              setShowFilters(false)
+            }},
+            { text: 'Done', onPress: () => {
+              setCapturedPhoto(null)
+              setFilteredPhotoUri(null)
+              setShowFilters(false)
+            }}
           ])
         } catch (uploadError: any) {
           // Photo saved locally but cloud upload failed
@@ -152,8 +164,16 @@ export default function CameraScreen() {
               'Setup Required', 
               'Photo saved locally, but cloud storage needs setup. Please run the storage setup script in Supabase.',
               [
-                { text: 'Take Another', onPress: () => setCapturedPhoto(null) },
-                { text: 'Done', onPress: () => setCapturedPhoto(null) }
+                { text: 'Take Another', onPress: () => {
+                  setCapturedPhoto(null)
+                  setFilteredPhotoUri(null)
+                  setShowFilters(false)
+                }},
+                { text: 'Done', onPress: () => {
+                  setCapturedPhoto(null)
+                  setFilteredPhotoUri(null)
+                  setShowFilters(false)
+                }}
               ]
             )
           } else if (uploadError.message?.includes('row-level security')) {
@@ -161,8 +181,16 @@ export default function CameraScreen() {
               'Permission Error', 
               'Photo saved locally, but cloud upload was blocked. Please check your account permissions.',
               [
-                { text: 'Take Another', onPress: () => setCapturedPhoto(null) },
-                { text: 'Done', onPress: () => setCapturedPhoto(null) }
+                { text: 'Take Another', onPress: () => {
+                  setCapturedPhoto(null)
+                  setFilteredPhotoUri(null)
+                  setShowFilters(false)
+                }},
+                { text: 'Done', onPress: () => {
+                  setCapturedPhoto(null)
+                  setFilteredPhotoUri(null)
+                  setShowFilters(false)
+                }}
               ]
             )
           } else {
@@ -170,8 +198,16 @@ export default function CameraScreen() {
               'Partial Success', 
               'Photo saved locally, but cloud backup failed. You can try again later.',
               [
-                { text: 'Take Another', onPress: () => setCapturedPhoto(null) },
-                { text: 'Done', onPress: () => setCapturedPhoto(null) }
+                { text: 'Take Another', onPress: () => {
+                  setCapturedPhoto(null)
+                  setFilteredPhotoUri(null)
+                  setShowFilters(false)
+                }},
+                { text: 'Done', onPress: () => {
+                  setCapturedPhoto(null)
+                  setFilteredPhotoUri(null)
+                  setShowFilters(false)
+                }}
               ]
             )
           }
@@ -179,8 +215,16 @@ export default function CameraScreen() {
       } else {
         // Not logged in, only local save
         Alert.alert('Success!', 'Photo saved to gallery', [
-          { text: 'Take Another', onPress: () => setCapturedPhoto(null) },
-          { text: 'Done', onPress: () => setCapturedPhoto(null) }
+          { text: 'Take Another', onPress: () => {
+            setCapturedPhoto(null)
+            setFilteredPhotoUri(null)
+            setShowFilters(false)
+          }},
+          { text: 'Done', onPress: () => {
+            setCapturedPhoto(null)
+            setFilteredPhotoUri(null)
+            setShowFilters(false)
+          }}
         ])
       }
     } catch (error) {
@@ -308,6 +352,28 @@ export default function CameraScreen() {
 
   const discardPhoto = () => {
     setCapturedPhoto(null)
+    setFilteredPhotoUri(null)
+    setShowFilters(false)
+  }
+
+  const openFilters = () => {
+    if (capturedPhoto) {
+      setShowFilters(true)
+    }
+  }
+
+  const handleFilterApplied = (filteredUri: string) => {
+    setFilteredPhotoUri(filteredUri)
+  }
+
+  const handleFilterSave = (uri: string) => {
+    setFilteredPhotoUri(uri)
+    setShowFilters(false)
+    savePhoto(uri)
+  }
+
+  const handleFilterClose = () => {
+    setShowFilters(false)
   }
 
   const handleVideoRecorded = (videoUri: string) => {
@@ -338,11 +404,14 @@ export default function CameraScreen() {
   }
 
   // Show photo preview if photo was captured
-  if (capturedPhoto) {
+  if (capturedPhoto && !showFilters) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <Image source={{ uri: capturedPhoto }} style={styles.previewImage} />
+        <Image 
+          source={{ uri: filteredPhotoUri || capturedPhoto }} 
+          style={styles.previewImage} 
+        />
         
         <View style={styles.previewControls}>
           <TouchableOpacity style={styles.previewButton} onPress={discardPhoto}>
@@ -350,9 +419,14 @@ export default function CameraScreen() {
             <Text style={styles.previewButtonText}>Discard</Text>
           </TouchableOpacity>
           
+          <TouchableOpacity style={styles.previewButton} onPress={openFilters}>
+            <Ionicons name="color-palette" size={30} color="white" />
+            <Text style={styles.previewButtonText}>Filters</Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity 
             style={[styles.previewButton, styles.saveButton]} 
-            onPress={savePhoto}
+            onPress={() => savePhoto()}
             disabled={isUploading}
           >
             <Ionicons name="download" size={30} color="white" />
@@ -362,6 +436,24 @@ export default function CameraScreen() {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+    )
+  }
+
+  // Show filter modal
+  if (showFilters && capturedPhoto) {
+    return (
+      <Modal
+        visible={showFilters}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <ImageFilters
+          imageUri={capturedPhoto}
+          onFilterApplied={handleFilterApplied}
+          onClose={handleFilterClose}
+          onSave={handleFilterSave}
+        />
+      </Modal>
     )
   }
 
@@ -588,7 +680,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
   },
   previewButton: {
     alignItems: 'center',
