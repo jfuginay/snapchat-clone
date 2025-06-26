@@ -36,7 +36,8 @@
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0"
-        }
+        },
+        "googleMapsApiKey": "AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0"
       }
     },
     "android": {
@@ -96,6 +97,7 @@
           "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone to record audio for videos."
         }
       ],
+
       "expo-web-browser"
     ],
     "extra": {
