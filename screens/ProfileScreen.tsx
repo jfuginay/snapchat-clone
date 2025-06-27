@@ -125,7 +125,7 @@ export default function ProfileScreen() {
   }
 
   const goToLocationSettings = () => {
-    navigation.navigate('LocationSettingsScreen' as never)
+    navigation.navigate('LocationSettings' as never)
   }
 
   const goToHomeLocationSettings = () => {
