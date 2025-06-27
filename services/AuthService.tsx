@@ -358,32 +358,69 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (existingUser) {
           console.log('👤 Existing user found, signing in...')
-          // Sign in existing user with email/password (create a session)
+          
+          // Try to sign in with the standard Google OAuth password
           const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
             email: result.user.email,
-            password: 'google-oauth-user' // Placeholder password for Google users
+            password: 'google-oauth-user'
           })
 
-          if (signInError && signInError.message.includes('Invalid login credentials')) {
-            // User exists but was created differently, update to allow Google sign in
-            console.log('🔄 Updating user for Google authentication...')
-            // For now, we'll create a new auth user
-            const { data: newAuthData, error: createError } = await supabase.auth.signUp({
-              email: result.user.email,
-              password: 'google-oauth-user',
-              options: {
-                data: {
-                  name: result.user.name,
-                  picture: result.user.photo,
-                  provider: 'google'
+          if (signInError) {
+            if (signInError.message.includes('Invalid login credentials')) {
+              console.log('🔄 User exists but needs Google auth setup...')
+              // User profile exists but auth user doesn't - this can happen with manual DB entries
+              // We need to handle this case by updating the existing user's auth
+              
+              // First, try to get the current session to see if we can update the auth user
+              const { data: currentUser } = await supabase.auth.getUser()
+              
+              if (!currentUser.user) {
+                // No current auth user, so we need to create one for this existing profile user
+                console.log('🆕 Creating auth user for existing profile...')
+                
+                // Since the profile exists, we'll sign them in by creating the auth user
+                const { data: newAuthData, error: createAuthError } = await supabase.auth.signUp({
+                  email: result.user.email,
+                  password: 'google-oauth-user',
+                  options: {
+                    data: {
+                      name: result.user.name,
+                      picture: result.user.photo,
+                      provider: 'google'
+                    }
+                  }
+                })
+                
+                if (createAuthError) {
+                  if (createAuthError.message.includes('User already registered')) {
+                    // Auth user exists but password is different - this shouldn't happen but let's handle it
+                    console.log('⚠️ Auth user exists with different credentials')
+                    return { error: 'Account exists with different sign-in method. Please use email/password or contact support.' }
+                  }
+                  console.error('❌ Error creating auth user for existing profile:', createAuthError)
+                  return { error: 'Failed to authenticate with Google account' }
+                }
+                
+                // Update the existing profile with the new auth user ID if needed
+                if (newAuthData.user && newAuthData.user.id !== existingUser.id) {
+                  console.log('🔄 Updating profile with new auth user ID...')
+                  await supabase
+                    .from('users')
+                    .update({ 
+                      id: newAuthData.user.id,
+                      auth_provider: 'google',
+                      avatar: result.user.photo || existingUser.avatar,
+                      display_name: result.user.name || existingUser.display_name
+                    })
+                    .eq('id', existingUser.id)
                 }
               }
-            })
-            
-            if (createError) {
-              console.error('❌ Error creating auth user:', createError)
+            } else {
+              console.error('❌ Unexpected sign-in error:', signInError)
               return { error: 'Failed to authenticate with Google account' }
             }
+          } else {
+            console.log('✅ Successfully signed in existing Google user')
           }
         } else {
           console.log('🆕 New user, creating account...')
