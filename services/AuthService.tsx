@@ -347,8 +347,116 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (result.user) {
-        console.log('✅ Google Sign In successful')
-        // The user profile will be created/updated by handleAuthStateChange
+        console.log('✅ Google Sign In successful, processing user...')
+        
+        // Check if user exists in Supabase
+        const { data: existingUser, error: fetchError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', result.user.email)
+          .single()
+
+        if (existingUser) {
+          console.log('👤 Existing user found, signing in...')
+          // Sign in existing user with email/password (create a session)
+          const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: result.user.email,
+            password: 'google-oauth-user' // Placeholder password for Google users
+          })
+
+          if (signInError && signInError.message.includes('Invalid login credentials')) {
+            // User exists but was created differently, update to allow Google sign in
+            console.log('🔄 Updating user for Google authentication...')
+            // For now, we'll create a new auth user
+            const { data: newAuthData, error: createError } = await supabase.auth.signUp({
+              email: result.user.email,
+              password: 'google-oauth-user',
+              options: {
+                data: {
+                  name: result.user.name,
+                  picture: result.user.photo,
+                  provider: 'google'
+                }
+              }
+            })
+            
+            if (createError) {
+              console.error('❌ Error creating auth user:', createError)
+              return { error: 'Failed to authenticate with Google account' }
+            }
+          }
+        } else {
+          console.log('🆕 New user, creating account...')
+          
+          // Generate username from email
+          const emailUsername = result.user.email.split('@')[0]
+          const timestamp = Date.now().toString().slice(-4)
+          const username = `${emailUsername}_${timestamp}`
+
+          // Create new auth user
+          const { data: authData, error: signUpError } = await supabase.auth.signUp({
+            email: result.user.email,
+            password: 'google-oauth-user',
+            options: {
+              data: {
+                name: result.user.name,
+                picture: result.user.photo,
+                provider: 'google'
+              }
+            }
+          })
+
+          if (signUpError) {
+            console.error('❌ Error creating new user:', signUpError)
+            return { error: 'Failed to create account with Google' }
+          }
+
+          if (authData.user) {
+            // Create user profile
+            const profileData = {
+              id: authData.user.id,
+              email: result.user.email,
+              username: username,
+              display_name: result.user.name || emailUsername,
+              avatar: result.user.photo || '👤',
+              bio: '',
+              snap_score: 0,
+              last_active: new Date().toISOString(),
+              is_online: true,
+              auth_provider: 'google',
+              settings: {
+                share_location: false,
+                allow_friend_requests: true,
+                show_online_status: true,
+                allow_message_from_strangers: false,
+                ghost_mode: false,
+                privacy_level: 'friends',
+                notifications: {
+                  push_enabled: true,
+                  location_updates: true,
+                  friend_requests: true,
+                  messages: true
+                }
+              },
+              stats: {
+                snaps_shared: 0,
+                friends_count: 0,
+                stories_posted: 0
+              }
+            }
+
+            const { error: profileError } = await supabase
+              .from('users')
+              .insert(profileData)
+
+            if (profileError) {
+              console.error('❌ Error creating user profile:', profileError)
+              return { error: 'Failed to create user profile' }
+            }
+          }
+        }
+
+        console.log('✅ Google Sign In and user processing complete')
         return {}
       }
 

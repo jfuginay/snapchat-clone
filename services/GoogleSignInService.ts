@@ -6,9 +6,8 @@ export class GoogleSignInService {
     try {
       GoogleSignin.configure({
         iosClientId: '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com',
-        webClientId: '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com', // From Google Cloud Console
-        offlineAccess: true,
-        hostedDomain: '',
+        webClientId: '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com', // For backend auth
+        offlineAccess: true, // To get refresh token
         forceCodeForRefreshToken: true,
       })
       console.log('✅ Google Sign In configured successfully')
@@ -27,34 +26,19 @@ export class GoogleSignInService {
       console.log('🚀 Starting Google Sign In...')
       const userInfo = await GoogleSignin.signIn()
       
-      if (!userInfo.data?.idToken) {
-        throw new Error('No ID token received from Google')
-      }
-
       console.log('✅ Google Sign In successful:', {
-        email: userInfo.data.user.email,
-        name: userInfo.data.user.name,
-        hasIdToken: !!userInfo.data.idToken
+        email: userInfo.data?.user?.email,
+        name: userInfo.data?.user?.name,
+        photo: userInfo.data?.user?.photo,
+        hasIdToken: !!userInfo.data?.idToken
       })
 
-      // Sign in to Supabase with Google ID token
-      console.log('🔐 Signing in to Supabase with Google token...')
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: userInfo.data.idToken,
-      })
-
-      if (error) {
-        console.error('❌ Supabase Google sign in error:', error)
-        return { error: error.message }
+      // Return the Google user info for manual processing
+      return { 
+        googleUser: userInfo.data,
+        user: userInfo.data?.user,
+        idToken: userInfo.data?.idToken
       }
-
-      if (data.user) {
-        console.log('✅ Supabase Google sign in successful')
-        return { user: data.user, session: data.session }
-      }
-
-      return { error: 'Failed to sign in with Google' }
     } catch (error: any) {
       console.error('❌ Google Sign In error:', error)
       
