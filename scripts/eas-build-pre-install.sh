@@ -8,7 +8,7 @@ echo "🔧 EAS Build Pre-Install Hook Starting..."
 # Create GoogleService-Info.plist from environment variable
 if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
     echo "📱 Creating GoogleService-Info.plist from EAS secret..."
-    echo "$GOOGLE_SERVICE_INFO_PLIST" > ./GoogleService-Info.plist
+    echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 -d > ./GoogleService-Info.plist
     echo "✅ GoogleService-Info.plist created successfully"
     
     # Verify the file was created
