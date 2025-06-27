@@ -419,7 +419,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                       .from('users')
                       .update({ 
                         id: newAuthData.user.id,
-                        auth_provider: 'google',
                         avatar: result.user.photo || existingUser.avatar,
                         display_name: result.user.name || existingUser.display_name,
                         last_active: new Date().toISOString(),
@@ -474,7 +473,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     await supabase
                       .from('users')
                       .update({ 
-                        auth_provider: 'google',
                         avatar: result.user.photo || existingUser.avatar,
                         display_name: result.user.name || existingUser.display_name,
                         last_active: new Date().toISOString()
@@ -497,7 +495,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           await supabase
             .from('users')
             .update({ 
-              auth_provider: 'google',
               avatar: result.user.photo || existingUser.avatar,
               display_name: result.user.name || existingUser.display_name,
               last_active: new Date().toISOString(),
@@ -581,7 +578,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
               snap_score: 0,
               last_active: new Date().toISOString(),
               is_online: true,
-              auth_provider: 'google',
               settings: {
                 share_location: false,
                 allow_friend_requests: true,
