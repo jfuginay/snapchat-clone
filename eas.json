@@ -12,19 +12,22 @@
         "disabled": true
       },
       "env": {
-        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST"
+        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST",
+        "GOOGLE_PLACES_API_KEY": "@GOOGLE_PLACES_API_KEY"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST"
+        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST",
+        "GOOGLE_PLACES_API_KEY": "@GOOGLE_PLACES_API_KEY"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST"
+        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST",
+        "GOOGLE_PLACES_API_KEY": "@GOOGLE_PLACES_API_KEY"
       }
     }
   },

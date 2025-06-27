@@ -434,3 +434,71 @@ BEGIN
   RAISE NOTICE '🗺️ MapScreen is now ready to work!';
   RAISE NOTICE '📱 You can now test the app on your iPhone';
 END $$; 
+
+-- =================================================================
+-- Final Verification
+-- =================================================================
+
+SELECT '✅ COMPLETE_DATABASE_SETUP script finished successfully.' as status;
+
+
+-- =================================================================
+-- Schema for the Local Knowledge RAG (Retrieval-Augmented Generation)
+-- This section adds the necessary tables and functions for the RAG feature.
+-- It is idempotent and can be run safely on existing databases.
+-- =================================================================
+
+-- Step 1: Intelligently enable required extensions.
+
+-- Enable pgvector in the `extensions` schema if it's not already enabled.
+CREATE EXTENSION IF NOT EXISTS pgvector WITH SCHEMA extensions;
+
+-- Enable postgis, handling the case where it might already exist (e.g., in `public`).
+DO $$
+BEGIN
+    -- Check if postgis is installed at all.
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
+        -- If not installed, create it in the correct `extensions` schema.
+        CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
+        RAISE NOTICE 'PostGIS extension was not found, so it has been created in the `extensions` schema.';
+    ELSE
+        -- If it is already installed, just log a notice. No action needed.
+        RAISE NOTICE 'PostGIS extension is already installed. Proceeding with RAG schema setup.';
+    END IF;
+END;
+$$;
+
+-- Step 2: Create the `local_knowledge` table.
+CREATE TABLE IF NOT EXISTS public.local_knowledge (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source TEXT NOT NULL,
+    content TEXT NOT NULL,
+    location GEOGRAPHY(Point, 4326),
+    metadata JSONB,
+    embedding VECTOR(1536),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.local_knowledge IS 'Stores vectorized and geolocated information about local points of interest for the RAG feature.';
+COMMENT ON COLUMN public.local_knowledge.source IS 'The origin of the data (e.g., foursquare_tips, osm_notes). Helps in tracking data lineage.';
+COMMENT ON COLUMN public.local_knowledge.content IS 'The textual content of the local tip or information that will be shown to the user.';
+COMMENT ON COLUMN public.local_knowledge.location IS 'The geographic coordinates (latitude, longitude) of the point of interest.';
+COMMENT ON COLUMN public.local_knowledge.metadata IS 'Flexible JSONB field for additional, non-searchable data like operating hours, user ratings, or event schedules.';
+COMMENT ON COLUMN public.local_knowledge.embedding IS 'A high-dimensional vector representation of the content, used for semantic similarity searches.';
+
+-- Step 3: Create indexes to optimize query performance.
+CREATE INDEX IF NOT EXISTS local_knowledge_location_idx ON public.local_knowledge USING GIST (location);
+CREATE INDEX IF NOT EXISTS local_knowledge_source_idx ON public.local_knowledge (source);
+
+-- NOTE: A vector index on the `embedding` column will be created later.
+
+-- Step 4: Ensure the trigger function for `updated_at` exists and is attached.
+-- This uses the generic `handle_updated_at` function created earlier in this master script.
+DROP TRIGGER IF EXISTS on_local_knowledge_update ON public.local_knowledge; -- Drop if exists to avoid errors on re-run
+CREATE TRIGGER on_local_knowledge_update
+BEFORE UPDATE ON public.local_knowledge
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_updated_at();
+
+SELECT '✅ Local Knowledge RAG schema integrated successfully.' as status; 
