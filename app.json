@@ -35,9 +35,9 @@
       "bundleIdentifier": "com.jfuginay.tribefind",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0"
+          "apiKey": "AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho"
         },
-        "googleMapsApiKey": "AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0"
+        "googleMapsApiKey": "AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho"
       }
     },
     "android": {
@@ -64,7 +64,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0"
+          "apiKey": "AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho"
         }
       }
     },
