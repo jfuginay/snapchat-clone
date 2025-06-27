@@ -512,6 +512,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
           
           console.log('✅ Google sign-in processing complete for existing user')
+          
+          // Force session refresh to trigger proper auth state change
+          console.log('🔄 Refreshing session to ensure user gets logged in...')
+          setTimeout(async () => {
+            try {
+              const { data: currentSession, error: sessionError } = await supabase.auth.getSession()
+              if (currentSession?.session) {
+                console.log('✅ Found active session, triggering auth state change')
+                await handleAuthStateChange(currentSession.session)
+              } else {
+                console.log('⚠️ No active session found, checking for auth user...')
+                const { data: { user }, error: userError } = await supabase.auth.getUser()
+                if (user) {
+                  console.log('✅ Found auth user, creating session manually')
+                  // Create a minimal session object for the auth state handler
+                  const manualSession = {
+                    user,
+                    access_token: 'google-oauth-session',
+                    refresh_token: 'google-oauth-refresh',
+                    expires_in: 3600,
+                    token_type: 'bearer'
+                  }
+                  await handleAuthStateChange(manualSession as any)
+                } else {
+                  console.log('❌ No auth user found - Google sign-in may have failed silently')
+                }
+              }
+            } catch (error) {
+              console.error('❌ Error during session refresh:', error)
+            }
+          }, 100) // Small delay to ensure auth operations complete
         } else {
           console.log('🆕 New user, creating account...')
           
@@ -580,6 +611,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
               console.error('❌ Error creating user profile:', profileError)
               return { error: 'Failed to create user profile' }
             }
+            
+            // Force session refresh for new user
+            console.log('🔄 Refreshing session for new user...')
+            setTimeout(async () => {
+              try {
+                const { data: newSession, error: newSessionError } = await supabase.auth.getSession()
+                if (newSession?.session) {
+                  console.log('✅ Found new user session, triggering auth state change')
+                  await handleAuthStateChange(newSession.session)
+                } else {
+                  console.log('✅ Creating manual session for new user')
+                  const manualSession = {
+                    user: authData.user,
+                    access_token: 'google-oauth-new-session',
+                    refresh_token: 'google-oauth-new-refresh',
+                    expires_in: 3600,
+                    token_type: 'bearer'
+                  }
+                  await handleAuthStateChange(manualSession as any)
+                }
+              } catch (error) {
+                console.error('❌ Error during new user session refresh:', error)
+              }
+            }, 100)
           }
         }
 
