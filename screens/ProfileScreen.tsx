@@ -349,10 +349,12 @@ export default function ProfileScreen() {
           <Text style={styles.avatar}>{currentUser?.avatar}</Text>
         )}
         
-        {/* Camera icon overlay */}
-        <View style={styles.cameraIconOverlay}>
-          <Ionicons name="camera" size={16} color="white" />
-        </View>
+        {/* Camera icon overlay - only show when no image is uploaded */}
+        {!avatarSource && !uploadingAvatar && (
+          <View style={styles.cameraIconOverlay}>
+            <Ionicons name="camera" size={16} color="white" />
+          </View>
+        )}
       </TouchableOpacity>
     )
   }
