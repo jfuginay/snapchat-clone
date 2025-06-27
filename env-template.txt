@@ -5,9 +5,12 @@
 EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# Note: Twitter OAuth credentials should be configured in your Supabase Dashboard
-# Go to Authentication > Providers > Twitter and add your Twitter app credentials there
-# Do NOT add Twitter credentials as environment variables when using Supabase OAuth
+# Twitter Native Authentication
+EXPO_PUBLIC_TWITTER_CLIENT_ID=your-twitter-oauth-client-id
+
+# Note: Only Client ID is needed for native Twitter authentication
+# Client Secret is NOT used in mobile apps for security reasons
+# Get your Client ID from Twitter Developer Portal > Your App > Keys and Tokens
 
 # Optional: Development flags
 EXPO_PUBLIC_ENV=development

@@ -4,11 +4,15 @@ import { useAppDispatch, useAppSelector } from '../store'
 import { setAuth, setLoading, clearAuth, updateUser } from '../store/authSlice'
 import { Session } from '@supabase/supabase-js'
 import { GoogleSignInService } from './GoogleSignInService'
+import { TwitterSignInService } from './TwitterSignInService'
+import * as WebBrowser from 'expo-web-browser'
+import * as Linking from 'expo-linking'
 
 interface AuthContextType {
   signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ error?: string }>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signInWithGoogle: () => Promise<{ error?: string }>
+  signInWithTwitter: () => Promise<{ error?: string }>
   signOut: () => Promise<{ error?: string }>
   resetPassword: (email: string) => Promise<{ error?: string }>
   enableGoogleSignIn: (email: string) => Promise<{ error?: string; success?: boolean; message?: string }>
@@ -54,8 +58,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
       handleAuthStateChange(session)
     })
 
+    // Set up deep link handler for OAuth callbacks
+    const handleDeepLink = (event: { url: string }) => {
+      console.log('🔗 Deep link received:', event.url)
+      
+      if (event.url.includes('/auth/callback')) {
+        console.log('🔄 Processing OAuth callback...')
+        
+        // For Twitter OAuth, the session should be created automatically by Supabase
+        // We just need to trigger a session refresh
+        setTimeout(async () => {
+          try {
+            const { data: { session }, error } = await supabase.auth.getSession()
+            if (session && !error) {
+              console.log('✅ OAuth callback successful - session found')
+              await handleAuthStateChange(session)
+            } else {
+              console.log('⚠️ OAuth callback - no session found, may need manual processing')
+            }
+          } catch (error) {
+            console.error('❌ Error processing OAuth callback:', error)
+          }
+        }, 1000) // Small delay to allow Supabase to process the callback
+      }
+    }
+
+    // Add deep link listener
+    const linkingSubscription = Linking.addEventListener('url', handleDeepLink)
+
+    // Handle initial URL if app was opened via deep link
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        console.log('🔗 Initial deep link URL:', url)
+        handleDeepLink({ url })
+      }
+    })
+
     return () => {
       subscription.unsubscribe()
+      linkingSubscription?.remove()
     }
   }, [dispatch])
 
@@ -648,6 +689,220 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+
+
+  const signInWithTwitter = async () => {
+    try {
+      console.log('🐦 Starting native Twitter Sign In...')
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testSupabaseConnection()
+      if (!isConnected) {
+        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+
+      // Configure Twitter Sign In Service
+      const clientId = process.env.EXPO_PUBLIC_TWITTER_CLIENT_ID
+      if (!clientId) {
+        return { error: 'Twitter Client ID is not configured. Please add EXPO_PUBLIC_TWITTER_CLIENT_ID to your environment variables.' }
+      }
+
+      TwitterSignInService.configure(clientId)
+
+      // Check if Twitter SDK is configured
+      const isConfigured = await TwitterSignInService.isConfigured()
+      if (!isConfigured) {
+        return { error: 'Twitter Sign In is not properly configured.' }
+      }
+
+      console.log('🚀 Starting native Twitter authentication...')
+
+      // Sign in with Twitter using native service
+      const result = await TwitterSignInService.signIn()
+
+      if (!result.success) {
+        console.error('❌ Twitter Sign In failed:', result.error)
+        return { error: result.error || 'Twitter sign-in failed' }
+      }
+
+      if (!result.user) {
+        return { error: 'No user data received from Twitter' }
+      }
+
+      console.log('✅ Twitter Sign In successful:', {
+        id: result.user.id,
+        username: result.user.username,
+        name: result.user.name
+      })
+
+      // Check if user already exists in database
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .or(`email.eq.${result.user.email || ''},social_accounts->twitter->>id.eq.${result.user.id}`)
+        .maybeSingle() // Use maybeSingle() instead of single() to avoid errors when no user found
+
+      if (existingUser) {
+        console.log('👤 Existing user found, signing in...')
+        
+        // Sign in existing user with Twitter-compatible password
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: existingUser.email,
+          password: 'twitter-oauth-user'
+        })
+
+        if (signInError) {
+          console.log('⚠️ Direct sign-in failed, trying alternative methods...')
+          
+          // Try creating a session manually
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: existingUser.email,
+            password: 'twitter-oauth-user',
+            options: {
+              data: {
+                name: result.user.name,
+                picture: result.user.profile_image_url,
+                provider: 'twitter'
+              }
+            }
+          })
+
+          if (authError && !authError.message.includes('User already registered')) {
+            return { error: `Failed to authenticate existing user: ${authError.message}` }
+          }
+        }
+
+        // Update profile with latest Twitter data
+        await supabase
+          .from('users')
+          .update({
+            social_accounts: {
+              ...(existingUser.social_accounts || {}),
+              twitter: {
+                id: result.user.id,
+                username: result.user.username,
+                name: result.user.name,
+                profile_image_url: result.user.profile_image_url,
+                verified: result.user.verified,
+                public_metrics: result.user.public_metrics
+              }
+            },
+            last_active: new Date().toISOString(),
+            is_online: true
+          })
+          .eq('id', existingUser.id)
+
+        return {}
+      }
+
+      // Create new user
+      console.log('👤 Creating new Twitter user...')
+
+      // Generate unique username
+      let username = `tw_${result.user.username}`
+      const { data: existingUsername } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .single()
+
+      if (existingUsername) {
+        username = `tw_${result.user.username}_${Date.now()}`
+      }
+
+      // Create auth user
+      const userEmail = result.user.email || `${result.user.id}@twitter.placeholder`
+      let authData: { user: any } | null = null
+      
+      const { data: signUpData, error: authError } = await supabase.auth.signUp({
+        email: userEmail,
+        password: 'twitter-oauth-user',
+        options: {
+          data: {
+            name: result.user.name,
+            picture: result.user.profile_image_url,
+            provider: 'twitter'
+          }
+        }
+      })
+
+      if (authError) {
+        // Check if it's just a "user already exists" error, which is OK for Twitter users
+        if (authError.message.includes('User already registered')) {
+          console.log('⚠️ Auth user already exists, trying to sign in instead...')
+          
+          // Try to sign in with the existing user
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: userEmail,
+            password: 'twitter-oauth-user'
+          })
+          
+          if (signInError) {
+            console.error('❌ Failed to sign in existing Twitter user:', signInError)
+            return { error: `Failed to authenticate Twitter user: ${signInError.message}` }
+          }
+          
+          // Get the current session to get the user ID
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session?.user) {
+            return { error: 'Failed to get user session after Twitter sign-in' }
+          }
+          
+          authData = { user: session.user }
+        } else {
+          console.error('❌ Failed to create auth user:', authError)
+          return { error: `Failed to create user account: ${authError.message}` }
+        }
+      } else {
+        authData = signUpData
+      }
+
+      if (!authData.user) {
+        return { error: 'Failed to create user account' }
+      }
+
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: result.user.email || `${result.user.id}@twitter.placeholder`,
+          username: username,
+          display_name: result.user.name,
+          avatar: result.user.profile_image_url,
+          bio: `Twitter user @${result.user.username}`,
+          social_accounts: {
+            twitter: {
+              id: result.user.id,
+              username: result.user.username,
+              name: result.user.name,
+              profile_image_url: result.user.profile_image_url,
+              verified: result.user.verified,
+              public_metrics: result.user.public_metrics
+            }
+          },
+          created_at: new Date().toISOString(),
+          last_active: new Date().toISOString(),
+          is_online: true
+        })
+
+      if (profileError) {
+        console.error('❌ Failed to create user profile:', profileError)
+        return { error: `Failed to create user profile: ${profileError.message}` }
+      }
+
+      console.log('✅ Twitter user created successfully')
+      return {}
+
+    } catch (error) {
+      console.error('Twitter Sign In error:', error)
+      return { error: 'An unexpected error occurred during Twitter sign-in' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
   const linkTwitterAccount = async () => {
     try {
       dispatch(setLoading(true))
@@ -956,6 +1211,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signUp,
     signIn,
     signInWithGoogle,
+    signInWithTwitter,
     signOut,
     resetPassword,
     enableGoogleSignIn,

@@ -25,7 +25,7 @@ export default function AuthScreen() {
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signIn, signUp, signInWithGoogle, clearSession, enableGoogleSignIn } = useAuth()
+  const { signIn, signUp, signInWithGoogle, signInWithTwitter, clearSession, enableGoogleSignIn } = useAuth()
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -67,6 +67,20 @@ export default function AuthScreen() {
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred with Google Sign In')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleTwitterSignIn = async () => {
+    setLoading(true)
+    try {
+      const result = await signInWithTwitter()
+      if (result.error) {
+        Alert.alert('Twitter Sign In Error', result.error)
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred with Twitter Sign In')
     } finally {
       setLoading(false)
     }
@@ -237,6 +251,20 @@ export default function AuthScreen() {
                     <Text style={styles.googleIcon}>🔍</Text>
                     <Text style={styles.googleButtonText}>
                       Continue with Google
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Twitter Sign In Button */}
+                <TouchableOpacity
+                  style={[styles.twitterButton, loading && styles.authButtonDisabled]}
+                  onPress={handleTwitterSignIn}
+                  disabled={loading}
+                >
+                  <View style={styles.twitterButtonContent}>
+                    <Text style={styles.twitterIcon}>🐦</Text>
+                    <Text style={styles.twitterButtonText}>
+                      Continue with Twitter
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -532,6 +560,32 @@ const styles = StyleSheet.create({
   enableGoogleText: {
     fontSize: 13,
     color: '#6366f1',
+    fontWeight: '600',
+  },
+  twitterButton: {
+    backgroundColor: '#1DA1F2',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#1DA1F2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  twitterButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  twitterIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  twitterButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
 }) 

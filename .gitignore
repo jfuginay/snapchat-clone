@@ -44,7 +44,6 @@ yarn-error.*
 
 # Security and credentials
 google-services.json
-GoogleService-Info.plist
 *.key
 *.pem
 *.crt
