@@ -34,9 +34,6 @@
       },
       "bundleIdentifier": "com.jfuginay.tribefind",
       "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho"
-        },
         "googleMapsApiKey": "AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho"
       }
     },
