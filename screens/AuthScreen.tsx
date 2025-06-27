@@ -25,7 +25,7 @@ export default function AuthScreen() {
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signIn, signUp, signInWithGoogle, clearSession } = useAuth()
+  const { signIn, signUp, signInWithGoogle, clearSession, enableGoogleSignIn } = useAuth()
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -67,6 +67,40 @@ export default function AuthScreen() {
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred with Google Sign In')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEnableGoogleSignIn = async () => {
+    if (!email) {
+      Alert.alert('Email Required', 'Please enter your email address first.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const result = await enableGoogleSignIn(email)
+      if (result.error) {
+        Alert.alert('Enable Google Sign-In Error', result.error)
+      } else {
+        Alert.alert(
+          'Google Sign-In Enabled!', 
+          result.message || 'You can now sign in with Google using this email address.',
+          [
+            {
+              text: 'Try Google Sign-In',
+              onPress: () => handleGoogleSignIn()
+            },
+            {
+              text: 'OK',
+              style: 'default'
+            }
+          ]
+        )
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred while enabling Google Sign-In')
     } finally {
       setLoading(false)
     }
@@ -226,6 +260,19 @@ export default function AuthScreen() {
                 <Text style={styles.socialNote}>
                   💡 You can link your social accounts after signing in
                 </Text>
+
+                {/* Enable Google Sign-In Button */}
+                {!isSignUp && (
+                  <TouchableOpacity
+                    style={styles.enableGoogleButton}
+                    onPress={handleEnableGoogleSignIn}
+                    disabled={loading}
+                  >
+                    <Text style={styles.enableGoogleText}>
+                      🔗 Enable Google Sign-In for this email
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
                 {/* Clear Session Button (for debugging/fresh start) */}
                 <TouchableOpacity
@@ -469,6 +516,22 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: '#374151',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  enableGoogleButton: {
+    marginTop: 12,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    alignItems: 'center',
+  },
+  enableGoogleText: {
+    fontSize: 13,
+    color: '#6366f1',
     fontWeight: '600',
   },
 }) 

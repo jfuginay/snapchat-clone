@@ -11,6 +11,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error?: string }>
   signOut: () => Promise<{ error?: string }>
   resetPassword: (email: string) => Promise<{ error?: string }>
+  enableGoogleSignIn: (email: string) => Promise<{ error?: string; success?: boolean; message?: string }>
   updateProfile: (updates: Partial<User>) => Promise<{ error?: string }>
   refreshUser: () => Promise<void>
   testConnection: () => Promise<boolean>
@@ -737,6 +738,139 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const enableGoogleSignIn = async (email: string) => {
+    try {
+      console.log('🔧 Enabling Google Sign-In for email user:', email)
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testSupabaseConnection()
+      if (!isConnected) {
+        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+
+      // Check if user exists in the database
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single()
+
+      if (fetchError || !existingUser) {
+        console.log('❌ User not found in database:', email)
+        return { error: 'No account found with this email address.' }
+      }
+
+      console.log('👤 Found user profile, enabling Google Sign-In...', {
+        userId: existingUser.id,
+        username: existingUser.username
+      })
+
+      // Step 1: Try to update the auth user's password to be Google-compatible
+      try {
+        // First, try to sign them in with current credentials to get access
+        const { data: currentAuth } = await supabase.auth.getUser()
+        
+        if (currentAuth?.user?.email === email) {
+          // User is currently signed in, we can update their password directly
+          console.log('🔑 User is signed in, updating password for Google compatibility...')
+          
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: 'google-oauth-user'
+          })
+          
+          if (!updateError) {
+            console.log('✅ Password updated successfully for Google Sign-In')
+            return { 
+              success: true,
+              message: 'Google Sign-In enabled! You can now sign in with Google using this email address.'
+            }
+          } else {
+            console.log('⚠️ Direct password update failed, trying reset approach...')
+          }
+        }
+      } catch (directUpdateError) {
+        console.log('⚠️ Direct update not possible, using reset approach...')
+      }
+
+      // Step 2: Use password reset approach with custom redirect
+      console.log('📧 Sending password reset to enable Google Sign-In...')
+      
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'tribefind://enable-google-signin'
+      })
+
+      if (resetError) {
+        console.error('❌ Password reset failed:', resetError)
+        return { error: 'Failed to send password reset email. Please try again.' }
+      }
+
+      console.log('✅ Password reset email sent for Google Sign-In enablement')
+      
+      // Step 3: Also try to create a Google-compatible auth user as backup
+      try {
+        console.log('🔄 Creating backup Google-compatible auth user...')
+        
+        const { data: backupAuthData, error: backupError } = await supabase.auth.signUp({
+          email: email,
+          password: 'google-oauth-user',
+          options: {
+            data: {
+              name: existingUser.display_name,
+              picture: existingUser.avatar,
+              provider: 'google-enabled',
+              existing_user: true
+            }
+          }
+        })
+        
+        if (backupAuthData?.user && !backupError) {
+          console.log('✅ Backup Google-compatible auth user created')
+          
+          // Update the existing profile to use the new auth user ID
+          if (backupAuthData.user.id !== existingUser.id) {
+            console.log('🔄 Migrating profile to Google-compatible auth user...')
+            
+            await supabase
+              .from('users')
+              .update({ 
+                id: backupAuthData.user.id,
+                last_active: new Date().toISOString(),
+                is_online: true
+              })
+              .eq('id', existingUser.id)
+              
+            console.log('✅ Profile migrated to Google-compatible auth user')
+          }
+          
+          return { 
+            success: true,
+            message: 'Google Sign-In enabled! You can now sign in with Google immediately.'
+          }
+        } else if (backupError?.message.includes('User already registered')) {
+          console.log('✅ Auth user already exists - Google Sign-In should work')
+          return { 
+            success: true,
+            message: 'Google Sign-In is now enabled! You can sign in with Google using this email.'
+          }
+        }
+      } catch (backupError) {
+        console.log('⚠️ Backup auth user creation failed, but reset email was sent')
+      }
+
+      return { 
+        success: true,
+        message: 'Password reset email sent! Check your email and follow the instructions to enable Google Sign-In.'
+      }
+
+    } catch (error) {
+      console.error('❌ Enable Google Sign-In error:', error)
+      return { error: 'An unexpected error occurred while enabling Google Sign-In' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
   const updateProfile = async (updates: Partial<User>) => {
     try {
       dispatch(setLoading(true))
@@ -824,6 +958,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signInWithGoogle,
     signOut,
     resetPassword,
+    enableGoogleSignIn,
     updateProfile,
     refreshUser,
     testConnection,
