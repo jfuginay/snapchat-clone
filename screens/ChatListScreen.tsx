@@ -25,13 +25,35 @@ interface User {
   is_online: boolean;
 }
 
+interface ChatRoom {
+  id: string;
+  name: string;
+  type: 'direct' | 'group';
+  participants: string[];
+  created_at: string;
+  updated_at: string;
+  last_message?: {
+    content: string;
+    created_at: string;
+    sender_id: string;
+  };
+  other_user?: User;
+}
+
 const ChatListScreen: React.FC = () => {
   const navigation = useNavigation();
   const user = useAppSelector((state) => state.auth.user);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingChats, setLoadingChats] = useState(true);
+
+  // Load existing chat rooms on mount
+  useEffect(() => {
+    loadChatRooms();
+  }, []);
 
   // Search for users when search query changes
   useEffect(() => {
@@ -41,6 +63,73 @@ const ChatListScreen: React.FC = () => {
       setUsers([]);
     }
   }, [searchQuery]);
+
+  const loadChatRooms = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingChats(true);
+      
+      // Get chat rooms where user is a participant
+      const { data: rooms, error } = await supabase
+        .from('chat_rooms')
+        .select(`
+          id,
+          name,
+          type,
+          participants,
+          created_at,
+          updated_at
+        `)
+        .contains('participants', [user.id])
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading chat rooms:', error);
+        return;
+      }
+
+      // For each chat room, get the other user info and last message
+      const roomsWithDetails = await Promise.all(
+        (rooms || []).map(async (room) => {
+          // Get other user info for direct chats
+          let otherUser: User | undefined;
+          if (room.type === 'direct') {
+            const otherUserId = room.participants.find((id: string) => id !== user.id);
+            if (otherUserId) {
+              const { data: userData } = await supabase
+                .from('users')
+                .select('id, username, display_name, avatar, is_online')
+                .eq('id', otherUserId)
+                .single();
+              otherUser = userData || undefined;
+            }
+          }
+
+          // Get last message
+          const { data: lastMessageData } = await supabase
+            .from('messages')
+            .select('content, created_at, sender_id')
+            .eq('chat_room_id', room.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          return {
+            ...room,
+            other_user: otherUser,
+            last_message: lastMessageData || undefined,
+          };
+        })
+      );
+
+      setChatRooms(roomsWithDetails);
+    } catch (error) {
+      console.error('Error loading chat rooms:', error);
+    } finally {
+      setLoadingChats(false);
+    }
+  };
 
   const searchUsers = async () => {
     if (!user || !searchQuery.trim()) return;
@@ -105,6 +194,9 @@ const ChatListScreen: React.FC = () => {
         chatRoomId = newChat.id;
       }
 
+      // Refresh chat list to show the new chat
+      loadChatRooms();
+
       // Navigate to chat screen
       (navigation as any).navigate('ChatScreen', {
         chatRoomId,
@@ -115,6 +207,70 @@ const ChatListScreen: React.FC = () => {
       console.error('Error starting chat:', error);
       Alert.alert('Error', 'Failed to start chat');
     }
+  };
+
+  const renderChatRoom = ({ item }: { item: ChatRoom }) => {
+    const otherUser = item.other_user;
+    const isImageUrl = otherUser?.avatar && otherUser.avatar.startsWith('http');
+    const displayName = otherUser?.display_name || item.name;
+    const lastMessage = item.last_message;
+    const isMyMessage = lastMessage?.sender_id === user?.id;
+
+    const formatTime = (dateString: string) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+      
+      if (diffInHours < 24) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.chatRoomItem}
+        onPress={() => {
+          (navigation as any).navigate('ChatScreen', {
+            chatRoomId: item.id,
+            otherUser: otherUser,
+          });
+        }}
+      >
+        <View style={styles.avatarContainer}>
+          {isImageUrl ? (
+            <Image
+              source={{ uri: otherUser.avatar }}
+              style={styles.avatarImage}
+              defaultSource={require('../assets/icon.png')}
+            />
+          ) : (
+            <Text style={styles.avatarEmoji}>{otherUser?.avatar || '👤'}</Text>
+          )}
+          {otherUser?.is_online && <View style={styles.onlineIndicator} />}
+        </View>
+
+        <View style={styles.chatInfo}>
+          <View style={styles.chatHeader}>
+            <Text style={styles.chatDisplayName}>{displayName}</Text>
+            {lastMessage && (
+              <Text style={styles.chatTime}>{formatTime(lastMessage.created_at)}</Text>
+            )}
+          </View>
+          <Text style={styles.lastMessage} numberOfLines={1}>
+            {lastMessage 
+              ? `${isMyMessage ? 'You: ' : ''}${lastMessage.content}`
+              : 'No messages yet'
+            }
+          </Text>
+        </View>
+
+        <View style={styles.chatArrow}>
+          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   const renderUser = ({ item }: { item: User }) => {
@@ -191,21 +347,50 @@ const ChatListScreen: React.FC = () => {
 
         {/* Results */}
         <View style={styles.resultsContainer}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#FFFFFF" />
-              <Text style={styles.loadingText}>Searching...</Text>
-            </View>
+          {searchQuery.length > 0 ? (
+            // Show search results when searching
+            loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text style={styles.loadingText}>Searching...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={users}
+                renderItem={renderUser}
+                keyExtractor={(item) => item.id}
+                style={styles.list}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={renderEmptyState}
+              />
+            )
           ) : (
-            <FlatList
-              data={users}
-              renderItem={renderUser}
-              keyExtractor={(item) => item.id}
-              style={styles.list}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={searchQuery.length > 0 ? renderEmptyState : null}
-            />
+            // Show existing chat rooms when not searching
+            loadingChats ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text style={styles.loadingText}>Loading chats...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={chatRooms}
+                renderItem={renderChatRoom}
+                keyExtractor={(item) => item.id}
+                style={styles.list}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={() => (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="chatbubbles-outline" size={60} color="#E0E7FF" />
+                    <Text style={styles.emptyTitle}>No Conversations Yet</Text>
+                    <Text style={styles.emptySubtitle}>
+                      Search for tribe members above to start chatting
+                    </Text>
+                  </View>
+                )}
+              />
+            )
           )}
         </View>
       </SafeAreaView>
@@ -343,6 +528,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     marginTop: 10,
+  },
+  // Chat room styles
+  chatRoomItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 10,
+  },
+  chatInfo: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  chatDisplayName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  chatTime: {
+    fontSize: 12,
+    color: '#C4B5FD',
+    marginLeft: 8,
+  },
+  lastMessage: {
+    fontSize: 14,
+    color: '#E0E7FF',
+    opacity: 0.8,
+  },
+  chatArrow: {
+    padding: 4,
   },
 });
 
