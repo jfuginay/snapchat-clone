@@ -25,7 +25,7 @@ export default function AuthScreen() {
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { signIn, signUp, clearSession } = useAuth()
+  const { signIn, signUp, signInWithGoogle, clearSession } = useAuth()
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -53,6 +53,20 @@ export default function AuthScreen() {
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true)
+    try {
+      const result = await signInWithGoogle()
+      if (result.error) {
+        Alert.alert('Google Sign In Error', result.error)
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred with Google Sign In')
     } finally {
       setLoading(false)
     }
@@ -170,6 +184,27 @@ export default function AuthScreen() {
                       </Text>
                     )}
                   </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Google Sign In Button */}
+                <TouchableOpacity
+                  style={[styles.googleButton, loading && styles.authButtonDisabled]}
+                  onPress={handleGoogleSignIn}
+                  disabled={loading}
+                >
+                  <View style={styles.googleButtonContent}>
+                    <Text style={styles.googleIcon}>🔍</Text>
+                    <Text style={styles.googleButtonText}>
+                      Continue with Google
+                    </Text>
+                  </View>
                 </TouchableOpacity>
 
                 {/* Switch Auth Mode */}
@@ -391,5 +426,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#EF4444',
     fontWeight: '500',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  googleIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }) 

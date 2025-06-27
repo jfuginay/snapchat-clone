@@ -35,7 +35,8 @@
       "bundleIdentifier": "com.jfuginay.tribefind",
       "config": {
         "googleMapsApiKey": "AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho"
-      }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -94,7 +95,12 @@
           "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone to record audio for videos."
         }
       ],
-
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s"
+        }
+      ],
       "expo-web-browser"
     ],
     "extra": {

@@ -3,10 +3,12 @@ import { supabase, User, testSupabaseConnection } from '../lib/supabase'
 import { useAppDispatch, useAppSelector } from '../store'
 import { setAuth, setLoading, clearAuth, updateUser } from '../store/authSlice'
 import { Session } from '@supabase/supabase-js'
+import { GoogleSignInService } from './GoogleSignInService'
 
 interface AuthContextType {
   signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ error?: string }>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
+  signInWithGoogle: () => Promise<{ error?: string }>
   signOut: () => Promise<{ error?: string }>
   resetPassword: (email: string) => Promise<{ error?: string }>
   updateProfile: (updates: Partial<User>) => Promise<{ error?: string }>
@@ -322,6 +324,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const signInWithGoogle = async () => {
+    try {
+      console.log('🔐 Starting Google Sign In...')
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testSupabaseConnection()
+      if (!isConnected) {
+        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+
+      // Configure Google Sign In if not already configured
+      await GoogleSignInService.configure()
+
+      // Attempt Google Sign In
+      const result = await GoogleSignInService.signIn()
+
+      if (result.error) {
+        console.log('❌ Google Sign In failed:', result.error)
+        return { error: result.error }
+      }
+
+      if (result.user) {
+        console.log('✅ Google Sign In successful')
+        // The user profile will be created/updated by handleAuthStateChange
+        return {}
+      }
+
+      return { error: 'Google Sign In failed. Please try again.' }
+    } catch (error) {
+      console.error('Google Sign In error:', error)
+      return { error: 'An unexpected error occurred during Google Sign In' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
   const linkTwitterAccount = async () => {
     try {
       dispatch(setLoading(true))
@@ -496,6 +535,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value = {
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     resetPassword,
     updateProfile,
