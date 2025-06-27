@@ -538,10 +538,17 @@ const MapScreen: React.FC = () => {
 
     console.log(`🏷️ Rendering marker for ${member.display_name}:`, {
       location: member.location,
+      locationValid: member.location && typeof member.location.latitude === 'number' && typeof member.location.longitude === 'number',
       color: markerColor,
       primaryActivity: primaryActivity?.name,
       activitiesCount: member.shared_activities.length
     });
+
+    // Validate coordinates
+    if (!member.location || typeof member.location.latitude !== 'number' || typeof member.location.longitude !== 'number') {
+      console.error(`❌ Invalid location data for ${member.display_name}:`, member.location);
+      return null;
+    }
 
     return (
       <Marker
@@ -759,6 +766,20 @@ const MapScreen: React.FC = () => {
         {/* User location marker */}
         {renderUserMarker()}
 
+        {/* DEBUGGING: Test marker to verify map rendering */}
+        <Marker
+          coordinate={{
+            latitude: userLocation?.latitude || 47.700961,
+            longitude: userLocation?.longitude || -117.465336
+          }}
+          title="Test Marker"
+          description="This marker should always be visible"
+        >
+          <View style={[styles.customMarker, { backgroundColor: '#FF0000' }]}>
+            <Text style={styles.markerIcon}>🔴</Text>
+          </View>
+        </Marker>
+
         {/* Radius circle */}
         {userLocation && (
           <Circle
@@ -775,13 +796,24 @@ const MapScreen: React.FC = () => {
           console.log('🗺️ Rendering tribe member markers:', {
             filteredCount: filteredTribeMembers.length,
             totalCount: tribeMembers.length,
+            allMembersCount: allTribeMembers.length,
             members: filteredTribeMembers.map(m => ({
+              name: m.display_name,
+              location: m.location,
+              activities: m.shared_activities.length
+            })),
+            allMembers: allTribeMembers.map(m => ({
               name: m.display_name,
               location: m.location,
               activities: m.shared_activities.length
             }))
           });
-          return filteredTribeMembers.map(renderTribeMemberMarker);
+          
+          // TEMPORARY: Show all members regardless of filter for debugging
+          const membersToShow = allTribeMembers.length > 0 ? allTribeMembers : filteredTribeMembers;
+          console.log('🚨 DEBUGGING: Showing', membersToShow.length, 'members (ignoring filters temporarily)');
+          
+          return membersToShow.map(renderTribeMemberMarker);
         })()}
       </MapView>
 
