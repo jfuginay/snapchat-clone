@@ -10,13 +10,25 @@
       "node": "20.18.0",
       "cache": {
         "disabled": true
-      }
+      },
+      "env": {
+        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST"
+      },
+      "prebuildCommand": "scripts/eas-build-pre-install.sh"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST"
+      },
+      "prebuildCommand": "scripts/eas-build-pre-install.sh"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "GOOGLE_SERVICE_INFO_PLIST": "@GOOGLE_SERVICE_INFO_PLIST"
+      },
+      "prebuildCommand": "scripts/eas-build-pre-install.sh"
     }
   },
   "submit": {
