@@ -275,22 +275,6 @@ USING ivfflat (embedding vector_cosine_ops);
 
 ---
 
-## 🔮 Future Roadmap
-
-### Short Term
-- [ ] Enhanced RAG training with more local data
-- [ ] Advanced camera filters and AR features
-- [ ] Push notifications for location-based events
-- [ ] Group activity planning with AI suggestions
-
-### Long Term
-- [ ] Machine learning for activity predictions
-- [ ] Integration with local business APIs
-- [ ] Advanced privacy controls with blockchain
-- [ ] Multi-language support with localized RAG
-
----
-
 ## 🏆 Development Achievements
 
 ### What We Accomplished
@@ -338,4 +322,4 @@ The RAG implementation alone represents months of typical development work, comp
 
 *Built with ❤️ and a lot of Office quotes by J & Claude*
 
-"That's what she said." - Michael Scott 
+"That's what she said." - Michael Scott
