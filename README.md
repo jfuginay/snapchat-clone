@@ -116,6 +116,41 @@ Just implemented a complete **Retrieval-Augmented Generation (RAG)** system for 
 
 ---
 
+## 📱 **Screenshots**
+
+Get a feel for TribeFind's intuitive interface and powerful features:
+
+<div align="center">
+
+### Authentication & Onboarding
+<img src="IMG_0643.PNG" width="200" alt="Sign In Screen" />
+
+*Universal sign-in with Twitter, Google, or Email*
+
+### Real-time Location & Social Discovery
+<img src="IMG_0647.PNG" width="200" alt="Map Screen" />
+
+*Interactive map showing friends and nearby activities*
+
+### Professional Camera Interface
+<img src="IMG_0651.PNG" width="200" alt="Camera Screen" />
+
+*Snapchat-style camera with filters and video recording*
+
+### Instant Messaging
+<img src="IMG_0655.PNG" width="200" alt="Chat Screen" />
+
+*Real-time messaging with delivery confirmation*
+
+### AI-Powered Local Knowledge
+<img src="IMG_0659.PNG" width="200" alt="Activities Screen" />
+
+*Ask the AI about local recommendations and hidden gems*
+
+</div>
+
+---
+
 ## 🛠 **Technology Stack**
 
 ### **Frontend**
