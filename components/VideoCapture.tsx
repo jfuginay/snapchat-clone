@@ -8,7 +8,6 @@ import {
   Dimensions,
   Animated,
 } from 'react-native'
-import { Camera, useCameraDevices, useCameraPermission, useMicrophonePermission } from 'react-native-vision-camera'
 import { Ionicons } from '@expo/vector-icons'
 import * as MediaLibrary from 'expo-media-library'
 import { useAppSelector } from '../store'
@@ -16,6 +15,24 @@ import { supabase } from '../lib/supabase'
 import * as FileSystem from 'expo-file-system'
 
 const { width, height } = Dimensions.get('window')
+
+// Conditional import for react-native-vision-camera (only available in development builds)
+let Camera: any = null
+let useCameraDevices: any = null
+let useCameraPermission: any = null
+let useMicrophonePermission: any = null
+
+try {
+  const visionCameraModule = require('react-native-vision-camera')
+  Camera = visionCameraModule.Camera
+  useCameraDevices = visionCameraModule.useCameraDevices
+  useCameraPermission = visionCameraModule.useCameraPermission
+  useMicrophonePermission = visionCameraModule.useMicrophonePermission
+  console.log('✅ Vision Camera module loaded (development build)')
+} catch (error) {
+  console.log('⚠️ Vision Camera module not available (Expo Go mode)')
+  console.log('   Advanced video recording requires a development build')
+}
 
 // Video duration options in seconds
 const VIDEO_DURATIONS = [3, 5, 10, 30]
@@ -26,8 +43,47 @@ interface VideoCaptureProps {
 }
 
 export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureProps) {
+  // Check if Vision Camera is available
+  if (!Camera || !useCameraDevices || !useCameraPermission || !useMicrophonePermission) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.unavailableContainer}>
+          <Ionicons name="videocam-off" size={80} color="#666" />
+          <Text style={styles.unavailableTitle}>Advanced Video Recording</Text>
+          <Text style={styles.unavailableText}>
+            Advanced video recording with react-native-vision-camera requires a development build.
+          </Text>
+          <Text style={styles.unavailableSubtext}>
+            This feature is not available in Expo Go.
+          </Text>
+          
+          <View style={styles.featuresList}>
+            <Text style={styles.featuresTitle}>Available in Development Build:</Text>
+            <Text style={styles.featureItem}>• Multiple video durations (3s, 5s, 10s, 30s)</Text>
+            <Text style={styles.featureItem}>• Front/back camera switching</Text>
+            <Text style={styles.featureItem}>• Real-time recording progress</Text>
+            <Text style={styles.featureItem}>• Cloud storage integration</Text>
+            <Text style={styles.featureItem}>• High-quality video recording</Text>
+          </View>
+
+          <View style={styles.buildInstructions}>
+            <Text style={styles.buildTitle}>To enable video recording:</Text>
+            <Text style={styles.buildStep}>1. Run: eas build --profile development</Text>
+            <Text style={styles.buildStep}>2. Install the development build</Text>
+            <Text style={styles.buildStep}>3. Full video features will be available</Text>
+          </View>
+
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>Back to Camera</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // If Vision Camera is available, use the hooks
   const devices = useCameraDevices()
-  const device = devices.find(d => d.position === 'back')
+  const device = devices.find((d: any) => d.position === 'back')
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission()
   const { hasPermission: hasMicrophonePermission, requestPermission: requestMicrophonePermission } = useMicrophonePermission()
   
@@ -37,7 +93,7 @@ export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureP
   const [isUploading, setIsUploading] = useState(false)
   const [cameraType, setCameraType] = useState<'back' | 'front'>('back')
   
-  const cameraRef = useRef<Camera>(null)
+  const cameraRef = useRef<any>(null)
   const progressAnimation = useRef(new Animated.Value(0)).current
   const recordingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -106,11 +162,11 @@ export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureP
 
       // Start recording
       const video = await cameraRef.current.startRecording({
-        onRecordingFinished: async (video) => {
+        onRecordingFinished: async (video: any) => {
           console.log('Video recorded:', video.path)
           await handleVideoRecorded(video.path)
         },
-        onRecordingError: (error) => {
+        onRecordingError: (error: any) => {
           console.error('Recording error:', error)
           Alert.alert('Recording Error', 'Failed to record video. Please try again.')
           resetRecording()
@@ -195,7 +251,7 @@ export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureP
       
       // Create filename with user folder structure
       const timestamp = Date.now()
-      const filename = `${user.id}/video_${timestamp}_${selectedDuration}s.mp4`
+      const filename = `${user.id}/video_${timestamp}.mp4`
       
       console.log('Uploading video to path:', filename)
 
@@ -204,7 +260,7 @@ export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureP
         encoding: FileSystem.EncodingType.Base64,
       })
       
-      // Convert base64 to Uint8Array for Supabase
+      // Convert base64 to Uint8Array
       const byteCharacters = atob(base64Data)
       const byteNumbers = new Array(byteCharacters.length)
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -216,7 +272,7 @@ export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureP
 
       // Upload to Supabase storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('videos') // We'll create a videos bucket
+        .from('videos')
         .upload(filename, uint8Array, {
           contentType: 'video/mp4',
           upsert: false
@@ -227,24 +283,14 @@ export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureP
         throw new Error(`Storage upload failed: ${uploadError.message}`)
       }
 
-      console.log('Video upload successful:', uploadData)
+      console.log('Upload successful:', uploadData)
 
-      // Get signed URL
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      // Get public URL
+      const { data: urlData } = supabase.storage
         .from('videos')
-        .createSignedUrl(filename, 60 * 60 * 24 * 365) // 1 year expiry
+        .getPublicUrl(filename)
 
-      let videoUrl: string
-      
-      if (signedUrlError) {
-        console.error('Signed URL error:', signedUrlError)
-        const { data: urlData } = supabase.storage
-          .from('videos')
-          .getPublicUrl(filename)
-        videoUrl = urlData.publicUrl
-      } else {
-        videoUrl = signedUrlData.signedUrl
-      }
+      const videoUrl = urlData.publicUrl
 
       // Save video metadata to database
       const { data: videoData, error: dbError } = await supabase
@@ -325,7 +371,7 @@ export default function VideoCapture({ onVideoRecorded, onClose }: VideoCaptureP
     )
   }
 
-  const currentDevice = devices.find(d => d.position === cameraType)
+  const currentDevice = devices.find((d: any) => d.position === cameraType)
 
   if (!currentDevice) {
     return (
@@ -437,6 +483,83 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
+  unavailableContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  unavailableTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginTop: 20,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  unavailableText: {
+    fontSize: 16,
+    color: '#ccc',
+    textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 24,
+  },
+  unavailableSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 30,
+    fontStyle: 'italic',
+  },
+  featuresList: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    width: '100%',
+  },
+  featuresTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFC00',
+    marginBottom: 12,
+  },
+  featureItem: {
+    fontSize: 14,
+    color: '#ddd',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  buildInstructions: {
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 30,
+    width: '100%',
+  },
+  buildTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#6366f1',
+    marginBottom: 12,
+  },
+  buildStep: {
+    fontSize: 14,
+    color: '#ddd',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  closeButton: {
+    backgroundColor: '#FFFC00',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+  },
+  closeButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   errorText: {
     color: 'white',
     fontSize: 18,
@@ -484,14 +607,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   title: {
     color: 'white',
     fontSize: 18,
@@ -534,26 +649,29 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     position: 'absolute',
-    top: 180,
+    top: 200,
     left: 20,
     right: 20,
-    alignItems: 'center',
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
   },
   progressBar: {
-    height: 4,
+    height: '100%',
     backgroundColor: '#FFFC00',
     borderRadius: 2,
-    alignSelf: 'flex-start',
   },
   progressText: {
+    position: 'absolute',
+    top: 10,
+    right: 0,
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginTop: 8,
   },
   bottomControls: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 40,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -567,28 +685,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   recordButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  recordingButton: {
-    borderColor: '#ff4444',
-  },
-  recordButtonInner: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#ff4444',
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordingButton: {
+    backgroundColor: 'rgba(255,68,68,0.3)',
+  },
+  recordButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFC00',
     justifyContent: 'center',
     alignItems: 'center',
   },
   recordingButtonInner: {
-    borderRadius: 8,
+    backgroundColor: '#ff4444',
   },
   uploadingText: {
     color: 'white',
