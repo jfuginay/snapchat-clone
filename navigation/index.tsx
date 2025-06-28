@@ -20,9 +20,14 @@ import ActivitiesScreen from '../screens/ActivitiesScreen'
 import UserSearchScreen from '../screens/UserSearchScreen'
 import ChatListScreen from '../screens/ChatListScreen'
 import ChatScreen from '../screens/ChatScreen'
+import AIChatScreen from '../screens/AIChatScreen'
+import SubscriptionScreen from '../screens/SubscriptionScreen'
 
-const Stack = createStackNavigator()
-const Tab = createBottomTabNavigator()
+// Import types
+import { RootStackParamList, TabParamList } from '../types/navigation'
+
+const Stack = createStackNavigator<RootStackParamList>()
+const Tab = createBottomTabNavigator<TabParamList>()
 
 function TabNavigator() {
   return (
@@ -206,6 +211,29 @@ export default function Navigation() {
               component={ChatScreen}
               options={{
                 headerShown: false, // Using custom header in the component
+              }}
+            />
+            <Stack.Screen 
+              name="AIChatScreen" 
+              component={AIChatScreen}
+              options={{
+                headerShown: true,
+                headerTitle: 'AI Assistant',
+                headerStyle: { backgroundColor: '#6366f1' },
+                headerTintColor: 'white',
+                headerTitleStyle: { fontWeight: 'bold' },
+              }}
+            />
+            <Stack.Screen 
+              name="SubscriptionScreen" 
+              component={SubscriptionScreen}
+              options={{
+                headerShown: true,
+                headerTitle: 'Upgrade',
+                headerStyle: { backgroundColor: '#6366f1' },
+                headerTintColor: 'white',
+                headerTitleStyle: { fontWeight: 'bold' },
+                presentation: 'modal',
               }}
             />
           </>

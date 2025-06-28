@@ -13,7 +13,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon-large.png",
       "resizeMode": "contain",
       "backgroundColor": "#6366f1"
     },
@@ -22,8 +22,14 @@
     ],
     "scheme": "tribefind",
     "ios": {
+      "icon": "./assets/icon.png",
       "supportsTablet": false,
       "buildNumber": "21",
+      "splash": {
+        "image": "./assets/splash-icon-large.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#6366f1"
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to capture and share photos.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for video recording.",
@@ -81,11 +87,17 @@
       },
       "googleServicesFile": "./GoogleService-Info.plist"
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6366f1"
-      },
+          "android": {
+        "icon": "./assets/icon.png",
+        "adaptiveIcon": {
+          "foregroundImage": "./assets/adaptive-icon.png",
+          "backgroundColor": "#6366f1"
+        },
+        "splash": {
+          "image": "./assets/splash-icon-large.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#6366f1"
+        },
       "edgeToEdgeEnabled": true,
       "package": "com.jfuginay.tribefind",
       "permissions": [

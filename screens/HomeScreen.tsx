@@ -9,7 +9,7 @@ import OnboardingTutorial from '../components/OnboardingTutorial'
 
 type MediaTab = 'photos' | 'videos'
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { user } = useAppSelector((state: any) => state.auth)
   const { tutorialVisible, firstTimeUser, hasCompletedOnboarding } = useAppSelector((state: any) => state.tutorial)
   const dispatch = useAppDispatch()
@@ -51,15 +51,35 @@ export default function HomeScreen() {
               <Text style={styles.subtitle}>Your captured moments</Text>
             </View>
             
-            {/* View Walkthrough Button */}
-            {hasCompletedOnboarding && (
+            {/* Action Buttons */}
+            <View style={styles.buttonContainer}>
+              {hasCompletedOnboarding && (
+                <TouchableOpacity
+                  style={styles.tutorialButton}
+                  onPress={handleShowTutorial}
+                >
+                  <Text style={styles.tutorialButtonText}>📚 Walkthrough</Text>
+                </TouchableOpacity>
+              )}
+              
               <TouchableOpacity
-                style={styles.tutorialButton}
-                onPress={handleShowTutorial}
+                style={[styles.tutorialButton, styles.aiChatButton]}
+                onPress={() => {
+                  navigation.navigate('AIChatScreen');
+                }}
               >
-                <Text style={styles.tutorialButtonText}>📚 View Walkthrough</Text>
+                <Text style={styles.tutorialButtonText}>🤖 AI Assistant</Text>
               </TouchableOpacity>
-            )}
+              
+              <TouchableOpacity
+                style={[styles.tutorialButton, styles.subscriptionButton]}
+                onPress={() => {
+                  navigation.navigate('SubscriptionScreen', {});
+                }}
+              >
+                <Text style={styles.tutorialButtonText}>⭐ Upgrade</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Tab Selector */}
@@ -122,6 +142,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
   },
+  buttonContainer: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   welcomeContainer: {
     flex: 1,
   },
@@ -142,7 +166,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
-    marginTop: 5,
+  },
+  aiChatButton: {
+    backgroundColor: 'rgba(99, 102, 241, 0.3)',
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+  },
+  subscriptionButton: {
+    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(239, 68, 68, 0.5)',
   },
   tutorialButtonText: {
     fontSize: 12,
