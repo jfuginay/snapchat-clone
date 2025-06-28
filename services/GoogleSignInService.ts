@@ -1,9 +1,31 @@
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import { Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
+
+// Conditional import for Google Sign-In (only available in development builds)
+let GoogleSignin: any = null
+let statusCodes: any = null
+
+try {
+  const googleSignInModule = require('@react-native-google-signin/google-signin')
+  GoogleSignin = googleSignInModule.GoogleSignin
+  statusCodes = googleSignInModule.statusCodes
+  console.log('✅ Google Sign-In module loaded (development build)')
+} catch (error) {
+  console.log('⚠️ Google Sign-In module not available (Expo Go mode)')
+  console.log('   This is normal when running in Expo Go. Use a development build for Google Sign-In.')
+}
 
 export class GoogleSignInService {
   static async configure() {
     try {
+      // Check if Google Sign-In is available
+      if (!GoogleSignin) {
+        console.log('⚠️ Google Sign-In not available in Expo Go')
+        console.log('   To use Google Sign-In, create a development build with:')
+        console.log('   npx expo run:ios or eas build --profile development')
+        return false
+      }
+
       // Hardcoded client IDs for standalone builds (these are safe to include in production)
       const iosClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
       const webClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
@@ -26,6 +48,13 @@ export class GoogleSignInService {
 
   static async signIn() {
     try {
+      // Check if Google Sign-In is available
+      if (!GoogleSignin || !statusCodes) {
+        return { 
+          error: 'Google Sign-In is not available in Expo Go. Please use a development build or the production app to use Google Sign-In.' 
+        }
+      }
+
       console.log('🔍 Checking Google Play Services...')
       
       // Check if Google Play Services are available (Android) or if we're on iOS
@@ -62,6 +91,10 @@ export class GoogleSignInService {
     } catch (error: any) {
       console.error('❌ Google Sign In error:', error)
       
+      if (!statusCodes) {
+        return { error: 'Google Sign-In is not available in Expo Go.' }
+      }
+      
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         return { error: 'Sign in was cancelled' }
       } else if (error.code === statusCodes.IN_PROGRESS) {
@@ -81,6 +114,11 @@ export class GoogleSignInService {
 
   static async signOut() {
     try {
+      if (!GoogleSignin) {
+        console.log('⚠️ Google Sign-In not available for sign out')
+        return true // Return success since there's nothing to sign out from
+      }
+
       await GoogleSignin.signOut()
       console.log('✅ Google Sign Out successful')
       return true
@@ -92,6 +130,10 @@ export class GoogleSignInService {
 
   static async getCurrentUser() {
     try {
+      if (!GoogleSignin) {
+        return null
+      }
+
       const userInfo = await GoogleSignin.getCurrentUser()
       return userInfo
     } catch (error) {
@@ -102,11 +144,20 @@ export class GoogleSignInService {
 
   static async isSignedIn() {
     try {
+      if (!GoogleSignin) {
+        return false
+      }
+
       const isSignedIn = await GoogleSignin.getCurrentUser()
       return !!isSignedIn
     } catch (error) {
       console.error('❌ Check Google sign in status error:', error)
       return false
     }
+  }
+
+  // Check if Google Sign-In is available in the current environment
+  static isAvailable() {
+    return !!GoogleSignin && !!statusCodes
   }
 } 
