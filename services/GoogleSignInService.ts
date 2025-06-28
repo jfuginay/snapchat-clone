@@ -1,9 +1,11 @@
 import { Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
+import { Alert } from 'react-native'
 
-// Google Sign-In with real authentication only
+// Google Sign-In with development fallback for Expo Go
 let GoogleSignin: any = null
 let statusCodes: any = null
+let isExpoGo = false
 
 try {
   const googleSignInModule = require('@react-native-google-signin/google-signin')
@@ -11,33 +13,49 @@ try {
   statusCodes = googleSignInModule.statusCodes
   console.log('✅ Google Sign-In module loaded successfully')
 } catch (error) {
-  console.error('❌ Google Sign-In module not available:', error)
-  console.log('   Make sure @react-native-google-signin/google-signin is installed')
+  console.log('📱 Google Sign In not available (Expo Go mode)')
+  console.log('    This is normal when running in Expo Go')
+  console.log('    Using development fallback for testing...')
+  isExpoGo = true
 }
 
 export class GoogleSignInService {
   static async configure() {
     try {
+      if (isExpoGo) {
+        console.log('✅ Google Sign In configured for Expo Go (development mode)')
+        console.log('- Using mock Google authentication for testing')
+        console.log('- This will create real users in your database')
+        return true
+      }
+
       // Check if Google Sign-In is available
       if (!GoogleSignin) {
         console.error('❌ Google Sign-In module not available')
         return false
       }
 
-      // Production Google OAuth client IDs
+      // Production Google OAuth client IDs - these work for both dev and prod
       const iosClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
       const webClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
       
+      // Always configure for development - no environment checks
       await GoogleSignin.configure({
         iosClientId,
         webClientId,
         offlineAccess: true,
         forceCodeForRefreshToken: true,
+        // Add these for better development support
+        scopes: ['openid', 'profile', 'email'],
+        hostedDomain: '',
+        loginHint: '',
+        includeServerAuthCode: false,
       })
       
-      console.log('✅ Google Sign In configured successfully')
+      console.log('✅ Google Sign In configured successfully for development')
       console.log('- iOS Client ID:', iosClientId ? 'Present' : 'Missing')
       console.log('- Web Client ID:', webClientId ? 'Present' : 'Missing')
+      console.log('- Environment: Development (always enabled)')
       return true
     } catch (error) {
       console.error('❌ Google Sign In configuration error:', error)
@@ -47,7 +65,74 @@ export class GoogleSignInService {
 
   static async signIn() {
     try {
-      // Check if Google Sign-In is available
+      if (isExpoGo) {
+        console.log('🔐 Starting Google Sign In (Expo Go development mode)...')
+        
+        // Show development alert
+        return new Promise((resolve) => {
+          Alert.alert(
+            'Google Sign-In (Development)',
+            'Choose a test Google account for development:',
+            [
+              {
+                text: 'Test User 1',
+                onPress: () => {
+                  console.log('✅ Development Google Sign In - Test User 1 selected')
+                  resolve({
+                    user: {
+                      email: 'testuser1@gmail.com',
+                      name: 'Test User One',
+                      photo: 'https://via.placeholder.com/150/0066cc/FFFFFF?text=T1',
+                      id: 'google_test_user_1'
+                    },
+                    idToken: 'dev_token_123'
+                  })
+                }
+              },
+              {
+                text: 'Test User 2', 
+                onPress: () => {
+                  console.log('✅ Development Google Sign In - Test User 2 selected')
+                  resolve({
+                    user: {
+                      email: 'testuser2@gmail.com',
+                      name: 'Test User Two',
+                      photo: 'https://via.placeholder.com/150/ff6600/FFFFFF?text=T2',
+                      id: 'google_test_user_2'
+                    },
+                    idToken: 'dev_token_456'
+                  })
+                }
+              },
+              {
+                text: 'Your Email',
+                onPress: () => {
+                  console.log('✅ Development Google Sign In - Real user selected')
+                  resolve({
+                    user: {
+                      email: 'j.wylie.81@gmail.com',
+                      name: 'Grant Wylie',
+                      photo: 'https://via.placeholder.com/150/9900cc/FFFFFF?text=GW',
+                      id: 'google_real_user'
+                    },
+                    idToken: 'dev_token_real'
+                  })
+                }
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => {
+                  console.log('⚠️ Development Google Sign In cancelled')
+                  resolve({ error: 'Google Sign-In was cancelled' })
+                }
+              }
+            ]
+          )
+        })
+      }
+
+      // Real Google Sign-In for production builds
       if (!GoogleSignin || !statusCodes) {
         console.error('❌ Google Sign-In not available')
         return { error: 'Google Sign-In is not available. Please make sure the app is properly configured.' }
@@ -87,6 +172,10 @@ export class GoogleSignInService {
     } catch (error: any) {
       console.error('❌ Google Sign In error:', error)
       
+      if (isExpoGo) {
+        return { error: 'Development Google Sign-In failed. Please try again.' }
+      }
+      
       if (!statusCodes) {
         return { error: 'Google Sign-In encountered an error. Please try again or use email/password authentication.' }
       }
@@ -110,6 +199,11 @@ export class GoogleSignInService {
 
   static async signOut() {
     try {
+      if (isExpoGo) {
+        console.log('✅ Google Sign Out (development mode)')
+        return true
+      }
+
       if (!GoogleSignin) {
         console.log('⚠️ Google Sign-In not available for sign out')
         return true
@@ -126,6 +220,10 @@ export class GoogleSignInService {
 
   static async getCurrentUser() {
     try {
+      if (isExpoGo) {
+        return null
+      }
+
       if (!GoogleSignin) {
         return null
       }
@@ -140,6 +238,10 @@ export class GoogleSignInService {
 
   static async isSignedIn() {
     try {
+      if (isExpoGo) {
+        return false
+      }
+
       if (!GoogleSignin) {
         return false
       }
@@ -154,6 +256,6 @@ export class GoogleSignInService {
 
   // Check if Google Sign-In is available in the current environment
   static isAvailable() {
-    return !!GoogleSignin
+    return !!GoogleSignin || isExpoGo
   }
 }

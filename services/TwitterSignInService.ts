@@ -30,14 +30,15 @@ export class TwitterSignInService {
 
   static configure(clientId?: string) {
     try {
-      // Use provided client ID or fallback to environment variable or hardcoded value
+      // Always use the production Twitter client ID for development
       this.clientId = clientId || 
                      process.env.EXPO_PUBLIC_TWITTER_CLIENT_ID || 
-                     'OFZlYXBaT3lGZW8wRkJ6aGtaWHI6MTpjaQ' // Fallback for standalone builds
+                     'OFZlYXBaT3lGZW8wRkJ6aGtaWHI6MTpjaQ' // Production client ID
       
-      console.log('✅ Twitter Sign In configured successfully')
+      console.log('✅ Twitter Sign In configured successfully for development')
       console.log('- Client ID:', this.clientId ? 'Present' : 'Missing')
       console.log('- Redirect URI:', this.redirectUri)
+      console.log('- Environment: Development (always enabled)')
       return true
     } catch (error) {
       console.error('❌ Twitter Sign In configuration error:', error)

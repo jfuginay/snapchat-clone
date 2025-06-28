@@ -791,52 +791,57 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signInWithGoogle = async () => {
     try {
-      console.log('🔐 Starting Google Sign In...')
+      console.log('🔐 Starting Google Sign In process...')
       dispatch(setLoading(true))
 
-      // Test connection first
-      const isConnected = await testConnection()
-      if (!isConnected) {
-        return { error: 'Cannot connect to server. Please check your internet connection and try again.' }
+      // Always configure Google Sign-In for development
+      const configured = await GoogleSignInService.configure()
+      if (!configured) {
+        console.log('❌ Google Sign-In configuration failed')
+        return { error: 'Google Sign-In is not properly configured' }
       }
 
-      // Configure Google Sign In if not already configured
-      const configResult = await GoogleSignInService.configure()
-      if (!configResult) {
-        return { error: 'Google Sign In is not properly configured. Please restart the app and try again.' }
-      }
-
-      // Attempt Google Sign In
+      console.log('✅ Google Sign-In configured, attempting sign in...')
       const result = await GoogleSignInService.signIn()
 
       if (result.error) {
-        console.log('❌ Google Sign In failed:', result.error)
+        console.log('❌ Google Sign-In failed:', result.error)
         return { error: result.error }
       }
 
-      if (result.user) {
-        console.log('✅ Google Sign In successful, processing user...')
-        
-        // Use universal sign-in system
-        const signInResult = await createOrSignInUser({
-          email: result.user.email,
-          name: result.user.name,
-          avatar: result.user.photo,
-          provider: 'google'
-        })
-        
-        if (signInResult.error) {
-          return { error: signInResult.error }
-        }
-        
-        console.log('✅ Google Sign In and user processing complete')
-        return {}
+      if (!result.user) {
+        console.log('❌ No user data from Google Sign-In')
+        return { error: 'No user information received from Google' }
       }
 
-      return { error: 'Google Sign In failed. Please try again.' }
+      console.log('✅ Google Sign-In successful, processing user...', {
+        email: result.user.email,
+        name: result.user.name,
+        hasPhoto: !!result.user.photo
+      })
+
+      // Create or sign in user with Google data
+      const authResult = await createOrSignInUser({
+        email: result.user.email || '',
+        name: result.user.name || '',
+        avatar: result.user.photo || null,
+        provider: 'google'
+      })
+
+      if (authResult.error) {
+        console.log('❌ User creation/sign-in failed:', authResult.error)
+        return { error: authResult.error }
+      }
+
+      console.log('✅ Google Sign-In and user processing complete')
+      
+      // Navigate to Map screen after successful Google OAuth
+      setTimeout(() => navigateToMapAfterOAuth(), 500)
+      
+      return {}
     } catch (error) {
       console.error('❌ Google Sign In error:', error)
-      return { error: 'An unexpected error occurred during Google Sign In. Please restart the app and try again.' }
+      return { error: 'An unexpected error occurred with Google Sign In' }
     } finally {
       dispatch(setLoading(false))
     }
@@ -844,64 +849,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signInWithTwitter = async () => {
     try {
-      console.log('🐦 Starting native Twitter Sign In...')
+      console.log('🐦 Starting Twitter Sign In process...')
       dispatch(setLoading(true))
 
-      // Test connection first
-      const isConnected = await testSupabaseConnection()
-      if (!isConnected) {
-        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      // Configure Twitter Sign-In
+      const configured = TwitterSignInService.configure()
+      if (!configured) {
+        console.log('❌ Twitter Sign-In configuration failed')
+        return { error: 'Twitter Sign-In is not properly configured' }
       }
 
-      // Configure Twitter Sign In Service
-      const clientId = process.env.EXPO_PUBLIC_TWITTER_CLIENT_ID
-      if (!clientId) {
-        return { error: 'Twitter Client ID is not configured. Please add EXPO_PUBLIC_TWITTER_CLIENT_ID to your environment variables.' }
-      }
-
-      TwitterSignInService.configure(clientId)
-
-      console.log('🚀 Starting native Twitter authentication...')
-
-      // Sign in with Twitter using native service
+      console.log('✅ Twitter Sign-In configured, attempting sign in...')
       const result = await TwitterSignInService.signIn()
 
-      if (!result.success) {
-        console.error('❌ Twitter Sign In failed:', result.error)
-        return { error: result.error || 'Twitter sign-in failed' }
+      if (!result.success || result.error) {
+        console.log('❌ Twitter Sign-In failed:', result.error)
+        return { error: result.error || 'Twitter Sign-In failed' }
       }
 
       if (!result.user) {
-        return { error: 'No user data received from Twitter' }
+        console.log('❌ No user data from Twitter Sign-In')
+        return { error: 'No user information received from Twitter' }
       }
 
-      console.log('✅ Twitter Sign In successful:', {
-        id: result.user.id,
+      console.log('✅ Twitter Sign-In successful, processing user...', {
         username: result.user.username,
-        name: result.user.name
+        name: result.user.name,
+        id: result.user.id
       })
 
-      // Use universal sign-in system
-      const userEmail = result.user.email || `${result.user.id}@twitter.placeholder`
-      const signInResult = await createOrSignInUser({
-        email: userEmail,
-        name: result.user.name,
-        avatar: result.user.profile_image_url,
+      // Create or sign in user with Twitter data
+      const authResult = await createOrSignInUser({
+        email: result.user.email || `${result.user.username}@twitter.placeholder`,
+        name: result.user.name || result.user.username,
+        avatar: result.user.profile_image_url || null,
         provider: 'twitter',
-        username: `tw_${result.user.username}`,
+        username: result.user.username,
         twitterData: result.user
       })
-      
-      if (signInResult.error) {
-        return { error: signInResult.error }
-      }
-      
-      console.log('✅ Twitter Sign In and user processing complete')
-      return {}
 
+      if (authResult.error) {
+        console.log('❌ User creation/sign-in failed:', authResult.error)
+        return { error: authResult.error }
+      }
+
+      console.log('✅ Twitter Sign-In and user processing complete')
+      
+      // Navigate to Map screen after successful Twitter OAuth
+      setTimeout(() => navigateToMapAfterOAuth(), 500)
+      
+      return {}
     } catch (error) {
-      console.error('Twitter Sign In error:', error)
-      return { error: 'An unexpected error occurred during Twitter sign-in' }
+      console.error('❌ Twitter Sign In error:', error)
+      return { error: 'An unexpected error occurred with Twitter Sign In' }
     } finally {
       dispatch(setLoading(false))
     }
