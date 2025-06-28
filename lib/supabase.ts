@@ -12,12 +12,18 @@ console.log('- EXPO_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Loaded' : '❌ Mis
 console.log('- EXPO_PUBLIC_SUPABASE_ANON_KEY:', supabaseKey ? '✅ Loaded' : '❌ Missing')
 console.log('- Using fallbacks:', !process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅ Yes (standalone mode)' : '❌ No (development mode)')
 
+// Debug actual values (first/last 10 characters for security)
+console.log('🔍 Supabase URL value:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...${supabaseUrl.substring(supabaseUrl.length - 10)}` : 'MISSING')
+console.log('🔍 Supabase Key value:', supabaseKey ? `${supabaseKey.substring(0, 20)}...${supabaseKey.substring(supabaseKey.length - 10)}` : 'MISSING')
+
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing Supabase environment variables!')
   console.error('This should not happen in standalone builds due to fallbacks.')
   console.error('If you see this error, check your EAS build configuration.')
   throw new Error('Missing Supabase environment variables. Check your EAS build configuration.')
 }
+
+console.log('🚀 Creating Supabase client with URL and key...')
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
@@ -45,14 +51,21 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
         try {
           console.log(`🌐 Network request attempt ${retryCount + 1}:`, url)
           
+          // Debug headers for API key issues
+          const finalHeaders = {
+            ...options.headers,
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          }
+          
+          console.log('📡 Request headers:', Object.keys(finalHeaders))
+          console.log('📡 Has apikey header:', finalHeaders.hasOwnProperty('apikey'))
+          console.log('📡 Has Authorization header:', finalHeaders.hasOwnProperty('Authorization'))
+          
           const response = await fetch(url, {
             ...options,
             signal: controller.signal,
-            headers: {
-              ...options.headers,
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive',
-            },
+            headers: finalHeaders,
           })
           
           clearTimeout(timeoutId)
