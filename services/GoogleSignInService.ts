@@ -1,7 +1,7 @@
 import { Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
 
-// Conditional import for Google Sign-In (with fallback for Expo Go)
+// Google Sign-In with proper fallback handling
 let GoogleSignin: any = null
 let statusCodes: any = null
 
@@ -9,38 +9,10 @@ try {
   const googleSignInModule = require('@react-native-google-signin/google-signin')
   GoogleSignin = googleSignInModule.GoogleSignin
   statusCodes = googleSignInModule.statusCodes
-  console.log('✅ Google Sign-In module loaded (development build)')
+  console.log('✅ Google Sign-In module loaded successfully')
 } catch (error) {
-  console.log('⚠️ Google Sign-In module not available (Expo Go mode)')
-  console.log('   Enabling fallback mode for development testing')
-  
-  // Create mock Google Sign-In for Expo Go development
-  GoogleSignin = {
-    configure: () => Promise.resolve(),
-    hasPlayServices: () => Promise.resolve(),
-    signIn: () => Promise.resolve({
-      data: {
-        user: {
-          email: 'demo.google@tribefind.com',
-          name: 'Google Demo User',
-          photo: 'https://via.placeholder.com/150/4285F4/FFFFFF?text=G',
-          id: 'google_demo_' + Date.now()
-        },
-        idToken: 'mock_google_id_token_' + Date.now()
-      }
-    }),
-    signOut: () => Promise.resolve(),
-    getCurrentUser: () => Promise.resolve(null),
-    isSignedIn: () => Promise.resolve(false)
-  }
-  
-  statusCodes = {
-    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
-    IN_PROGRESS: 'IN_PROGRESS',
-    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE'
-  }
-  
-  console.log('✅ Google Sign-In fallback mode enabled for Expo Go')
+  console.log('⚠️ Google Sign-In module not available - this is expected in Expo Go')
+  console.log('   Google Sign-In will work in development builds and production')
 }
 
 export class GoogleSignInService {
@@ -48,20 +20,22 @@ export class GoogleSignInService {
     try {
       // Check if Google Sign-In is available
       if (!GoogleSignin) {
-        console.log('⚠️ Google Sign-In not available')
+        console.log('⚠️ Google Sign-In not available in current environment')
+        console.log('   Available in: Development builds, TestFlight, Production')
         return false
       }
 
-      // Hardcoded client IDs for standalone builds (these are safe to include in production)
+      // Production Google OAuth client IDs
       const iosClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
       const webClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
       
-      GoogleSignin.configure({
+      await GoogleSignin.configure({
         iosClientId,
-        webClientId, // For backend auth
-        offlineAccess: true, // To get refresh token
+        webClientId,
+        offlineAccess: true,
         forceCodeForRefreshToken: true,
       })
+      
       console.log('✅ Google Sign In configured successfully')
       console.log('- iOS Client ID:', iosClientId ? 'Present' : 'Missing')
       console.log('- Web Client ID:', webClientId ? 'Present' : 'Missing')
@@ -77,25 +51,23 @@ export class GoogleSignInService {
       // Check if Google Sign-In is available
       if (!GoogleSignin || !statusCodes) {
         return { 
-          error: 'Google Sign-In is not available. Please try again or use email/password authentication.' 
+          error: 'Google Sign-In is not available in this environment. Please use a development build, TestFlight, or production app for Google Sign-In functionality.' 
         }
       }
 
-      console.log('🔍 Checking Google Play Services...')
+      console.log('🔍 Checking Google Play Services availability...')
       
-      // Check if Google Play Services are available (Android) or if we're on iOS
+      // Check Google Play Services (Android) or continue on iOS
       try {
         await GoogleSignin.hasPlayServices()
         console.log('✅ Google Play Services available')
       } catch (playServicesError: any) {
         console.log('⚠️ Google Play Services check:', playServicesError)
-        // On iOS, this might fail but that's okay
-        if (playServicesError.code !== statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-          // If it's not a Play Services issue, it might be iOS - continue anyway
-          console.log('📱 Continuing (likely iOS device or Expo Go fallback)')
-        } else {
-          return { error: 'Google Play Services not available. Please update Google Play Services.' }
+        // On iOS this might fail, but we can continue
+        if (Platform.OS === 'android' && playServicesError.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          return { error: 'Google Play Services not available. Please update Google Play Services and try again.' }
         }
+        console.log('📱 Continuing (iOS device or Play Services available)')
       }
       
       console.log('🚀 Starting Google Sign In...')
@@ -108,7 +80,7 @@ export class GoogleSignInService {
         hasIdToken: !!userInfo.data?.idToken
       })
 
-      // Return the Google user info for manual processing
+      // Return real Google user info for processing
       return { 
         googleUser: userInfo.data,
         user: userInfo.data?.user,
@@ -118,13 +90,13 @@ export class GoogleSignInService {
       console.error('❌ Google Sign In error:', error)
       
       if (!statusCodes) {
-        return { error: 'Google Sign-In encountered an error. Please try again.' }
+        return { error: 'Google Sign-In encountered an error. Please try again or use email/password authentication.' }
       }
       
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        return { error: 'Sign in was cancelled' }
+        return { error: 'Google Sign-In was cancelled. Please try again.' }
       } else if (error.code === statusCodes.IN_PROGRESS) {
-        return { error: 'Sign in is already in progress' }
+        return { error: 'Google Sign-In is already in progress. Please wait.' }
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         return { error: 'Google Play Services not available. Please update Google Play Services.' }
       } else {
@@ -133,7 +105,7 @@ export class GoogleSignInService {
           message: error.message,
           domain: error.domain
         })
-        return { error: error.message || 'Google Sign In failed. Please try again.' }
+        return { error: error.message || 'Google Sign-In failed. Please try again.' }
       }
     }
   }
@@ -142,7 +114,7 @@ export class GoogleSignInService {
     try {
       if (!GoogleSignin) {
         console.log('⚠️ Google Sign-In not available for sign out')
-        return true // Return success since there's nothing to sign out from
+        return true
       }
 
       await GoogleSignin.signOut()
@@ -184,7 +156,6 @@ export class GoogleSignInService {
 
   // Check if Google Sign-In is available in the current environment
   static isAvailable() {
-    // Always return true now since we have fallback mode
     return !!GoogleSignin && !!statusCodes
   }
 } 
