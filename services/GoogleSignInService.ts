@@ -4,13 +4,19 @@ import { supabase } from '../lib/supabase'
 export class GoogleSignInService {
   static async configure() {
     try {
+      // Hardcoded client IDs for standalone builds (these are safe to include in production)
+      const iosClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
+      const webClientId = '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com'
+      
       GoogleSignin.configure({
-        iosClientId: '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com',
-        webClientId: '928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s.apps.googleusercontent.com', // For backend auth
+        iosClientId,
+        webClientId, // For backend auth
         offlineAccess: true, // To get refresh token
         forceCodeForRefreshToken: true,
       })
       console.log('✅ Google Sign In configured successfully')
+      console.log('- iOS Client ID:', iosClientId ? 'Present' : 'Missing')
+      console.log('- Web Client ID:', webClientId ? 'Present' : 'Missing')
       return true
     } catch (error) {
       console.error('❌ Google Sign In configuration error:', error)
@@ -21,7 +27,21 @@ export class GoogleSignInService {
   static async signIn() {
     try {
       console.log('🔍 Checking Google Play Services...')
-      await GoogleSignin.hasPlayServices()
+      
+      // Check if Google Play Services are available (Android) or if we're on iOS
+      try {
+        await GoogleSignin.hasPlayServices()
+        console.log('✅ Google Play Services available')
+      } catch (playServicesError: any) {
+        console.log('⚠️ Google Play Services check:', playServicesError)
+        // On iOS, this might fail but that's okay
+        if (playServicesError.code !== statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          // If it's not a Play Services issue, it might be iOS - continue anyway
+          console.log('📱 Continuing (likely iOS device)')
+        } else {
+          return { error: 'Google Play Services not available. Please update Google Play Services.' }
+        }
+      }
       
       console.log('🚀 Starting Google Sign In...')
       const userInfo = await GoogleSignin.signIn()
@@ -47,9 +67,14 @@ export class GoogleSignInService {
       } else if (error.code === statusCodes.IN_PROGRESS) {
         return { error: 'Sign in is already in progress' }
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        return { error: 'Google Play Services not available' }
+        return { error: 'Google Play Services not available. Please update Google Play Services.' }
       } else {
-        return { error: error.message || 'An unexpected error occurred' }
+        console.error('❌ Unexpected Google Sign In error:', {
+          code: error.code,
+          message: error.message,
+          domain: error.domain
+        })
+        return { error: error.message || 'Google Sign In failed. Please try again.' }
       }
     }
   }

@@ -321,14 +321,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const testConnection = async (): Promise<boolean> => {
+    try {
+      console.log('🔍 Testing Supabase connection...')
+      const { data, error } = await supabase.from('users').select('count').limit(1)
+      if (error) {
+        console.error('❌ Supabase connection test failed:', error)
+        return false
+      }
+      console.log('✅ Supabase connection successful')
+      return true
+    } catch (error) {
+      console.error('❌ Supabase connection error:', error)
+      return false
+    }
+  }
+
   const signIn = async (email: string, password: string) => {
     try {
       dispatch(setLoading(true))
 
-      // Test connection first
-      const isConnected = await testSupabaseConnection()
+      // Test connection first with better error handling
+      const isConnected = await testConnection()
       if (!isConnected) {
-        return { error: 'Cannot connect to server. Please check your internet connection.' }
+        return { 
+          error: 'Cannot connect to server. Please check your internet connection and try again. If this persists, the app may need to be updated.' 
+        }
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -337,6 +355,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
 
       if (error) {
+        console.error('❌ Sign in error:', error)
         if (error.message.includes('Invalid login credentials')) {
           return { error: 'Invalid email or password. Please check your credentials and try again.' }
         }
@@ -356,11 +375,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return { error: 'Sign in failed. Please try again.' }
     } catch (error) {
-      console.error('Sign in error:', error)
+      console.error('❌ Sign in error:', error)
       if (error instanceof Error && (error.message.includes('network') || error.message.includes('fetch'))) {
         return { error: 'Network error. Please check your internet connection.' }
       }
-      return { error: 'An unexpected error occurred' }
+      return { error: 'An unexpected error occurred. Please restart the app and try again.' }
     } finally {
       dispatch(setLoading(false))
     }
@@ -372,13 +391,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       dispatch(setLoading(true))
 
       // Test connection first
-      const isConnected = await testSupabaseConnection()
+      const isConnected = await testConnection()
       if (!isConnected) {
-        return { error: 'Cannot connect to server. Please check your internet connection.' }
+        return { error: 'Cannot connect to server. Please check your internet connection and try again.' }
       }
 
       // Configure Google Sign In if not already configured
-      await GoogleSignInService.configure()
+      const configResult = await GoogleSignInService.configure()
+      if (!configResult) {
+        return { error: 'Google Sign In is not properly configured. Please restart the app and try again.' }
+      }
 
       // Attempt Google Sign In
       const result = await GoogleSignInService.signIn()
@@ -489,71 +511,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
                       break
                     }
                   }
-                  
-                  if (!authSuccess) {
-                    // Last resort: Create a session manually by updating their password
-                    console.log('🔧 Attempting password reset to enable Google sign-in...')
-                    
-                    // This is a bit of a hack, but we'll try to reset their password to our Google password
-                    try {
-                      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-                        result.user.email,
-                        { redirectTo: 'tribefind://password-reset-google' }
-                      )
-                      
-                      if (!resetError) {
-                        console.log('📧 Password reset sent - user can complete Google setup')
-                        // For now, we'll create a temporary session
-                        // In a real app, you might want to show a message about checking email
-                      }
-                    } catch (resetErr) {
-                      console.log('⚠️ Password reset failed, continuing with profile update')
-                    }
-                    
-                    // Even if auth fails, we'll update their profile to show they attempted Google sign-in
-                    console.log('📝 Updating profile with Google information...')
-                    await supabase
-                      .from('users')
-                      .update({ 
-                        avatar: result.user.photo || existingUser.avatar,
-                        display_name: result.user.name || existingUser.display_name,
-                        last_active: new Date().toISOString()
-                      })
-                      .eq('id', existingUser.id)
-                    
-                    // Create a manual session for this user
-                    authSuccess = true
-                    console.log('✅ Profile updated, treating as successful Google sign-in')
-                  }
+                } else {
+                  console.error('❌ Failed to create Google-compatible auth user:', createAuthError)
                 }
               }
-            } catch (sessionError) {
-              console.log('⚠️ Session check failed:', sessionError)
+            } catch (error) {
+              console.error('❌ Error in Google sign-in fallback approaches:', error)
+            }
+          } else {
+            console.error('❌ Unexpected Google OAuth error:', googleSignInError)
+          }
+          
+          if (authSuccess && finalAuthUser) {
+            // Update user profile with Google info
+            console.log('🔄 Updating user profile with Google information...')
+            try {
+              await supabase
+                .from('users')
+                .update({
+                  display_name: result.user.name || existingUser.display_name,
+                  avatar: result.user.photo || existingUser.avatar,
+                  last_active: new Date().toISOString(),
+                  is_online: true
+                })
+                .eq('id', existingUser.id)
+              
+              console.log('✅ User profile updated with Google info')
+            } catch (updateError) {
+              console.error('⚠️ Failed to update user profile (non-critical):', updateError)
             }
           }
           
-          // Update the existing profile with Google data regardless of auth outcome
-          console.log('🔄 Updating profile with Google information...')
-          await supabase
-            .from('users')
-            .update({ 
-              avatar: result.user.photo || existingUser.avatar,
-              display_name: result.user.name || existingUser.display_name,
-              last_active: new Date().toISOString(),
-              is_online: true
-            })
-            .eq('email', result.user.email) // Use email to find the user
-          
-          if (!authSuccess) {
-            console.log('⚠️ Auth methods failed, but Google sign-in should still work')
-            // Even if auth failed, we don't want to block the user
-            // The profile update above should trigger the auth state change
-          }
-          
-          console.log('✅ Google sign-in processing complete for existing user')
-          
-          // Force session refresh to trigger proper auth state change
-          console.log('🔄 Refreshing session to ensure user gets logged in...')
+          // Trigger auth state change with a slight delay to ensure everything is processed
           setTimeout(async () => {
             try {
               const { data: currentSession, error: sessionError } = await supabase.auth.getSession()
@@ -583,15 +572,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
           }, 100) // Small delay to ensure auth operations complete
         } else {
-          console.log('🆕 New user, creating account...')
+          // New user - create both auth user and profile
+          console.log('🆕 New user detected, creating account...')
           
-          // Generate username from email
-          const emailUsername = result.user.email.split('@')[0]
-          const timestamp = Date.now().toString().slice(-4)
-          const username = `${emailUsername}_${timestamp}`
-
-          // Create new auth user
-          const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          const { data: authData, error: authError } = await supabase.auth.signUp({
             email: result.user.email,
             password: 'google-oauth-user',
             options: {
@@ -602,56 +586,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
               }
             }
           })
-
-          if (signUpError) {
-            console.error('❌ Error creating new user:', signUpError)
-            return { error: 'Failed to create account with Google' }
-          }
-
-          if (authData.user) {
-            // Create user profile
-            const profileData = {
-              id: authData.user.id,
-              email: result.user.email,
-              username: username,
-              display_name: result.user.name || emailUsername,
-              avatar: result.user.photo || '👤',
-              bio: '',
-              snap_score: 0,
-              last_active: new Date().toISOString(),
-              is_online: true,
-              settings: {
-                share_location: false,
-                allow_friend_requests: true,
-                show_online_status: true,
-                allow_message_from_strangers: false,
-                ghost_mode: false,
-                privacy_level: 'friends',
-                notifications: {
-                  push_enabled: true,
-                  location_updates: true,
-                  friend_requests: true,
-                  messages: true
-                }
-              },
-              stats: {
-                snaps_shared: 0,
-                friends_count: 0,
-                stories_posted: 0
+          
+          if (authError) {
+            console.error('❌ Failed to create new auth user:', authError)
+            if (authError.message.includes('User already registered')) {
+              // User exists but we couldn't find them - try to sign them in
+              console.log('🔄 User exists, attempting sign in...')
+              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: result.user.email,
+                password: 'google-oauth-user'
+              })
+              
+              if (signInData?.user && !signInError) {
+                console.log('✅ Successfully signed in existing user')
+              } else {
+                console.error('❌ Failed to sign in existing user:', signInError)
+                return { error: 'Account setup failed. Please try again or contact support.' }
               }
+            } else {
+              return { error: 'Account creation failed. Please try again.' }
             }
-
-            const { error: profileError } = await supabase
-              .from('users')
-              .insert(profileData)
-
-            if (profileError) {
-              console.error('❌ Error creating user profile:', profileError)
-              return { error: 'Failed to create user profile' }
-            }
+          } else if (authData?.user) {
+            console.log('✅ New auth user created successfully')
             
-            // Force session refresh for new user
-            console.log('🔄 Refreshing session for new user...')
+            // Profile will be created automatically by handleAuthStateChange
+            // But we'll trigger it manually to ensure it happens
             setTimeout(async () => {
               try {
                 const { data: newSession, error: newSessionError } = await supabase.auth.getSession()
@@ -682,14 +641,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return { error: 'Google Sign In failed. Please try again.' }
     } catch (error) {
-      console.error('Google Sign In error:', error)
-      return { error: 'An unexpected error occurred during Google Sign In' }
+      console.error('❌ Google Sign In error:', error)
+      return { error: 'An unexpected error occurred during Google Sign In. Please restart the app and try again.' }
     } finally {
       dispatch(setLoading(false))
     }
   }
-
-
 
   const signInWithTwitter = async () => {
     try {
@@ -1179,10 +1136,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('Refresh user error:', error)
     }
-  }
-
-  const testConnection = async (): Promise<boolean> => {
-    return await testSupabaseConnection()
   }
 
   const clearSession = async () => {

@@ -28,10 +28,16 @@ export class TwitterSignInService {
   private static clientId: string | null = null
   private static redirectUri = 'tribefind://auth/twitter'
 
-  static configure(clientId: string) {
+  static configure(clientId?: string) {
     try {
-      this.clientId = clientId
+      // Use provided client ID or fallback to environment variable or hardcoded value
+      this.clientId = clientId || 
+                     process.env.EXPO_PUBLIC_TWITTER_CLIENT_ID || 
+                     'OFZlYXBaT3lGZW8wRkJ6aGtaWHI6MTpjaQ' // Fallback for standalone builds
+      
       console.log('✅ Twitter Sign In configured successfully')
+      console.log('- Client ID:', this.clientId ? 'Present' : 'Missing')
+      console.log('- Redirect URI:', this.redirectUri)
       return true
     } catch (error) {
       console.error('❌ Twitter Sign In configuration error:', error)
