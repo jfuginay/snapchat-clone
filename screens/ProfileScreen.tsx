@@ -125,15 +125,15 @@ export default function ProfileScreen() {
   }
 
   const goToLocationSettings = () => {
-    navigation.navigate('LocationSettingsScreen' as never)
+    navigation.navigate('LocationSettings' as never)
   }
 
   const goToHomeLocationSettings = () => {
-    navigation.navigate('HomeLocationSettingsScreen' as never)
+    navigation.navigate('HomeLocationSettings' as never)
   }
 
   const goToActivitiesSettings = () => {
-    navigation.navigate('ActivitiesScreen' as never)
+    navigation.navigate('Activities' as never)
   }
 
   const handleTwitterLink = async () => {
@@ -349,10 +349,12 @@ export default function ProfileScreen() {
           <Text style={styles.avatar}>{currentUser?.avatar}</Text>
         )}
         
-        {/* Camera icon overlay */}
-        <View style={styles.cameraIconOverlay}>
-          <Ionicons name="camera" size={16} color="white" />
-        </View>
+        {/* Camera icon overlay - only show when no image is uploaded */}
+        {!avatarSource && !uploadingAvatar && (
+          <View style={styles.cameraIconOverlay}>
+            <Ionicons name="camera" size={16} color="white" />
+          </View>
+        )}
       </TouchableOpacity>
     )
   }

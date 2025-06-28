@@ -28,12 +28,10 @@ export type RootStackParamList = {
   };
   
   // User Screens
-  UserSearchScreen: undefined;
+  UserSearch: undefined;
   
   // Settings Screens
-  LocationSettingsScreen: undefined;
   LocationSettings: undefined;
-  HomeLocationSettingsScreen: undefined;
   HomeLocationSettings: undefined;
 };
 

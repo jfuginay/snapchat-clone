@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth } from '../services/AuthService'
+import { GoogleSignInService } from '../services/GoogleSignInService'
 
 const { width, height } = Dimensions.get('window')
 
@@ -24,8 +25,15 @@ export default function AuthScreen() {
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleSignInAvailable, setGoogleSignInAvailable] = useState(false)
 
-  const { signIn, signUp, clearSession } = useAuth()
+  const { signIn, signUp, signInWithGoogle, signInWithTwitter, clearSession, enableGoogleSignIn } = useAuth()
+
+  useEffect(() => {
+    // Force Google Sign-In to always be available - never grey it out
+    setGoogleSignInAvailable(true)
+    console.log('✅ Google Sign-In forced to be available in all environments')
+  }, [])
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -53,6 +61,77 @@ export default function AuthScreen() {
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true)
+    try {
+      const result = await signInWithGoogle()
+      if (result.error) {
+        Alert.alert('Google Sign In Error', result.error)
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred with Google Sign In')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleTwitterSignIn = async () => {
+    console.log('🐦 Twitter Sign-In button clicked - starting authentication flow...')
+    console.log('🔍 Expected flow: Twitter button -> Twitter OAuth -> Twitter API -> App dashboard')
+    
+    setLoading(true)
+    try {
+      console.log('📱 Calling signInWithTwitter() function...')
+      const result = await signInWithTwitter()
+      
+      if (result.error) {
+        console.error('❌ Twitter Sign-In failed with error:', result.error)
+        Alert.alert('Twitter Sign In Error', result.error)
+      } else {
+        console.log('✅ Twitter Sign-In completed successfully!')
+      }
+    } catch (error) {
+      console.error('❌ Unexpected Twitter Sign-In error:', error)
+      Alert.alert('Error', 'An unexpected error occurred with Twitter Sign In')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEnableGoogleSignIn = async () => {
+    if (!email) {
+      Alert.alert('Email Required', 'Please enter your email address first.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const result = await enableGoogleSignIn(email)
+      if (result.error) {
+        Alert.alert('Enable Google Sign-In Error', result.error)
+      } else {
+        Alert.alert(
+          'Google Sign-In Enabled!', 
+          result.message || 'You can now sign in with Google using this email address.',
+          [
+            {
+              text: 'Try Google Sign-In',
+              onPress: () => handleGoogleSignIn()
+            },
+            {
+              text: 'OK',
+              style: 'default'
+            }
+          ]
+        )
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred while enabling Google Sign-In')
     } finally {
       setLoading(false)
     }
@@ -172,6 +251,44 @@ export default function AuthScreen() {
                   </LinearGradient>
                 </TouchableOpacity>
 
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Google Sign In Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.googleButton, 
+                    loading && styles.authButtonDisabled
+                  ]}
+                  onPress={handleGoogleSignIn}
+                  disabled={loading}
+                >
+                  <View style={styles.googleButtonContent}>
+                    <Text style={styles.googleIcon}>🔍</Text>
+                    <Text style={styles.googleButtonText}>
+                      Continue with Google
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Twitter Sign In Button */}
+                <TouchableOpacity
+                  style={[styles.twitterButton, loading && styles.authButtonDisabled]}
+                  onPress={handleTwitterSignIn}
+                  disabled={loading}
+                >
+                  <View style={styles.twitterButtonContent}>
+                    <Text style={styles.twitterIcon}>🐦</Text>
+                    <Text style={styles.twitterButtonText}>
+                      Continue with Twitter
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
                 {/* Switch Auth Mode */}
                 <TouchableOpacity
                   style={styles.switchButton}
@@ -191,6 +308,19 @@ export default function AuthScreen() {
                 <Text style={styles.socialNote}>
                   💡 You can link your social accounts after signing in
                 </Text>
+
+                {/* Enable Google Sign-In Button */}
+                {!isSignUp && (
+                  <TouchableOpacity
+                    style={styles.enableGoogleButton}
+                    onPress={handleEnableGoogleSignIn}
+                    disabled={loading}
+                  >
+                    <Text style={styles.enableGoogleText}>
+                      🔗 Enable Google Sign-In for this email
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
                 {/* Clear Session Button (for debugging/fresh start) */}
                 <TouchableOpacity
@@ -391,5 +521,91 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#EF4444',
     fontWeight: '500',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  googleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  googleIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  enableGoogleButton: {
+    marginTop: 12,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    alignItems: 'center',
+  },
+  enableGoogleText: {
+    fontSize: 13,
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  twitterButton: {
+    backgroundColor: '#1DA1F2',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#1DA1F2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  twitterButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  twitterIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  twitterButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }) 

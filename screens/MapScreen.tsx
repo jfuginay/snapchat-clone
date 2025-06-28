@@ -458,14 +458,27 @@ const MapScreen: React.FC = () => {
       setTribeMembers(membersData); // Keep for backward compatibility
       
       // Apply current filters to new data
+      console.log('📊 Applying filters to tribe members:', {
+        totalMembers: membersData.length,
+        selectedFilters: selectedActivityFilters,
+        filterCount: selectedActivityFilters.length
+      });
+
       if (selectedActivityFilters.length === 0) {
+        console.log('✅ No filters applied, showing all members:', membersData.length);
         setFilteredTribeMembers(membersData);
       } else {
         const filtered = membersData.filter((member: TribeMember) => {
-          return member.shared_activities.some((activity: any) => 
+          const hasMatchingActivity = member.shared_activities.some((activity: any) => 
             selectedActivityFilters.includes(activity.id)
           );
+          console.log(`🔍 Member ${member.display_name}: ${hasMatchingActivity ? 'MATCHES' : 'NO MATCH'} filters`, {
+            memberActivities: member.shared_activities.map(a => a.name),
+            selectedFilters: selectedActivityFilters
+          });
+          return hasMatchingActivity;
         });
+        console.log('✅ Filtered members:', filtered.length, 'of', membersData.length);
         setFilteredTribeMembers(filtered);
       }
 
@@ -522,6 +535,12 @@ const MapScreen: React.FC = () => {
   const renderTribeMemberMarker = useCallback((member: TribeMember) => {
     const markerColor = getMarkerColor(member.shared_activities);
     const primaryActivity = member.shared_activities[0];
+
+    // Validate coordinates
+    if (!member.location || typeof member.location.latitude !== 'number' || typeof member.location.longitude !== 'number') {
+      console.error(`❌ Invalid location data for ${member.display_name}:`, member.location);
+      return null;
+    }
 
     return (
       <Marker

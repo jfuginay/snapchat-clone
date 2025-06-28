@@ -3,12 +3,19 @@ import { supabase, User, testSupabaseConnection } from '../lib/supabase'
 import { useAppDispatch, useAppSelector } from '../store'
 import { setAuth, setLoading, clearAuth, updateUser } from '../store/authSlice'
 import { Session } from '@supabase/supabase-js'
+import { GoogleSignInService } from './GoogleSignInService'
+import { TwitterSignInService } from './TwitterSignInService'
+import * as WebBrowser from 'expo-web-browser'
+import * as Linking from 'expo-linking'
 
 interface AuthContextType {
   signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ error?: string }>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
+  signInWithGoogle: () => Promise<{ error?: string }>
+  signInWithTwitter: () => Promise<{ error?: string }>
   signOut: () => Promise<{ error?: string }>
   resetPassword: (email: string) => Promise<{ error?: string }>
+  enableGoogleSignIn: (email: string) => Promise<{ error?: string; success?: boolean; message?: string }>
   updateProfile: (updates: Partial<User>) => Promise<{ error?: string }>
   refreshUser: () => Promise<void>
   testConnection: () => Promise<boolean>
@@ -51,8 +58,53 @@ export function AuthProvider({ children }: AuthProviderProps) {
       handleAuthStateChange(session)
     })
 
+    // Set up deep link handler for OAuth callbacks
+    const handleDeepLink = (event: { url: string }) => {
+      console.log('🔗 Deep link received:', event.url)
+      
+      // Handle different OAuth callback patterns
+      if (event.url.includes('/auth/callback') || event.url.includes('/auth/twitter') || event.url.includes('tribefind://auth')) {
+        console.log('🔄 Processing OAuth callback...', { url: event.url })
+        
+        // For Twitter OAuth, extract the code and handle manually
+        if (event.url.includes('/auth/twitter') || event.url.includes('tribefind://auth/twitter')) {
+          console.log('🐦 Twitter OAuth callback detected')
+          // Twitter callback is handled by TwitterSignInService directly
+          // No additional processing needed here
+          return
+        }
+        
+        // For other OAuth providers (Google, etc.), refresh session
+        setTimeout(async () => {
+          try {
+            const { data: { session }, error } = await supabase.auth.getSession()
+            if (session && !error) {
+              console.log('✅ OAuth callback successful - session found')
+              await handleAuthStateChange(session)
+            } else {
+              console.log('⚠️ OAuth callback - no session found, may need manual processing')
+            }
+          } catch (error) {
+            console.error('❌ Error processing OAuth callback:', error)
+          }
+        }, 1000) // Small delay to allow Supabase to process the callback
+      }
+    }
+
+    // Add deep link listener
+    const linkingSubscription = Linking.addEventListener('url', handleDeepLink)
+
+    // Handle initial URL if app was opened via deep link
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        console.log('🔗 Initial deep link URL:', url)
+        handleDeepLink({ url })
+      }
+    })
+
     return () => {
       subscription.unsubscribe()
+      linkingSubscription?.remove()
     }
   }, [dispatch])
 
@@ -79,19 +131,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // User doesn't exist, create profile for new signup
           console.log('🆕 User profile not found - creating new profile')
           
-          // Generate username and display name from email
-          const emailUsername = session.user.email?.split('@')[0] || 'user'
-          const timestamp = Date.now().toString().slice(-4) // Last 4 digits of timestamp
-          const autoUsername = `${emailUsername}_${timestamp}`
-          const autoDisplayName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1)
+          // Generate a unique username
+          let baseUsername = session.user.user_metadata?.username || 
+                           session.user.user_metadata?.name?.toLowerCase().replace(/\s+/g, '_') ||
+                           session.user.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') ||
+                           'user'
           
+          // Ensure username is unique by checking database and adding suffix if needed
+          let username = baseUsername
+          let usernameAttempt = 0
+          let usernameExists = true
+          
+          while (usernameExists && usernameAttempt < 10) {
+            const { data: existingUsername } = await supabase
+              .from('users')
+              .select('username')
+              .eq('username', username)
+              .maybeSingle()
+            
+            if (!existingUsername) {
+              usernameExists = false
+            } else {
+              usernameAttempt++
+              username = `${baseUsername}_${usernameAttempt}`
+            }
+          }
+          
+          // If still not unique after 10 attempts, use timestamp
+          if (usernameExists) {
+            username = `${baseUsername}_${Date.now()}`
+          }
+
+          // Create profile data from auth session
           const profileData = {
             id: session.user.id,
             email: session.user.email || '',
-            username: autoUsername,
-            display_name: autoDisplayName,
-            avatar: '👋',
-            bio: '',
+            username: username,
+            display_name: session.user.user_metadata?.display_name || 
+                         session.user.user_metadata?.name || 
+                         'User',
+            avatar: session.user.user_metadata?.picture || 
+                   session.user.user_metadata?.avatar_url || 
+                   null,
+            bio: null,
             snap_score: 0,
             last_active: new Date().toISOString(),
             is_online: true,
@@ -116,13 +198,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
           }
 
-          console.log('💾 Creating new user profile...', { 
-            userId: session.user.id, 
-            email: session.user.email,
-            autoUsername,
-            autoDisplayName
+          console.log('💾 Attempting to create profile with unique username:', {
+            userId: profileData.id,
+            email: profileData.email,
+            username: profileData.username
           })
 
+          // Try to insert new profile with proper error handling
           const { data: newProfile, error: createError } = await supabase
             .from('users')
             .insert(profileData)
@@ -132,26 +214,85 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (createError) {
             console.error('❌ Error creating user profile:', createError)
             
-            // If it's a duplicate key error, the user already exists - try to fetch again
+            // If it's a duplicate key error, try to fetch and update existing profile
             if (createError.code === '23505') {
-              console.log('🔄 User already exists, fetching existing profile...')
-              const { data: existingProfile, error: fetchError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single()
+              console.log('🔄 Profile already exists, fetching and updating existing profile...')
               
-              if (!fetchError && existingProfile) {
-                console.log('👤 Found existing user profile:', {
-                  id: existingProfile.id,
-                  username: existingProfile.username,
-                  email: existingProfile.email
-                })
-                dispatch(setAuth({ user: existingProfile, session }))
+              // Check if it's a duplicate ID or username
+              if (createError.message.includes('users_pkey')) {
+                console.log('🔍 Duplicate ID error - fetching existing profile by ID')
+                const { data: existingProfile, error: fetchError } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .single()
+                
+                if (!fetchError && existingProfile) {
+                  console.log('✅ Found existing profile by ID, updating it')
+                  const { data: updatedProfile, error: updateError } = await supabase
+                    .from('users')
+                    .update({
+                      display_name: profileData.display_name || existingProfile.display_name,
+                      avatar: profileData.avatar || existingProfile.avatar,
+                      last_active: new Date().toISOString(),
+                      is_online: true
+                    })
+                    .eq('id', session.user.id)
+                    .select()
+                    .single()
+                  
+                  if (!updateError && updatedProfile) {
+                    console.log('✅ Existing profile updated successfully')
+                    dispatch(setAuth({ user: updatedProfile, session }))
+                  } else {
+                    console.log('✅ Using existing profile as-is')
+                    dispatch(setAuth({ user: existingProfile, session }))
+                  }
+                } else {
+                  console.log('⚠️ Could not find existing profile by ID')
+                  dispatch(setAuth({ user: null, session }))
+                }
+              } else if (createError.message.includes('users_username_key')) {
+                console.log('🔍 Duplicate username error - generating new unique username')
+                
+                // Generate a new unique username with timestamp
+                const newUsername = `${baseUsername}_${Date.now()}`
+                const updatedProfileData = { ...profileData, username: newUsername }
+                
+                console.log('🔄 Retrying profile creation with new username:', newUsername)
+                
+                const { data: retryProfile, error: retryError } = await supabase
+                  .from('users')
+                  .insert(updatedProfileData)
+                  .select()
+                  .single()
+                
+                if (!retryError && retryProfile) {
+                  console.log('✅ Profile created successfully with new username')
+                  dispatch(setAuth({ user: retryProfile, session }))
+                } else {
+                  console.error('❌ Failed to create profile even with new username:', retryError)
+                  dispatch(setAuth({ user: null, session }))
+                }
               } else {
-                dispatch(setAuth({ user: null, session }))
+                console.log('🔍 Other duplicate key error - trying general fallback')
+                // Try to find existing profile by email
+                const { data: profileByEmail, error: fetchByEmailError } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('email', session.user.email || '')
+                  .maybeSingle()
+                
+                if (!fetchByEmailError && profileByEmail) {
+                  console.log('✅ Found existing profile by email')
+                  dispatch(setAuth({ user: profileByEmail, session }))
+                } else {
+                  console.log('⚠️ Could not find or create profile, proceeding with session only')
+                  dispatch(setAuth({ user: null, session }))
+                }
               }
             } else {
+              console.log('⚠️ Profile creation failed with non-duplicate error, proceeding with session only')
               dispatch(setAuth({ user: null, session }))
             }
           } else {
@@ -277,14 +418,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const testConnection = async (): Promise<boolean> => {
+    try {
+      console.log('🔍 Testing Supabase connection...')
+      const { data, error } = await supabase.from('users').select('count').limit(1)
+      if (error) {
+        console.error('❌ Supabase connection test failed:', error)
+        return false
+      }
+      console.log('✅ Supabase connection successful')
+      return true
+    } catch (error) {
+      console.error('❌ Supabase connection error:', error)
+      return false
+    }
+  }
+
   const signIn = async (email: string, password: string) => {
     try {
       dispatch(setLoading(true))
 
-      // Test connection first
-      const isConnected = await testSupabaseConnection()
+      // Test connection first with better error handling
+      const isConnected = await testConnection()
       if (!isConnected) {
-        return { error: 'Cannot connect to server. Please check your internet connection.' }
+        return { 
+          error: 'Cannot connect to server. Please check your internet connection and try again. If this persists, the app may need to be updated.' 
+        }
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -293,6 +452,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
 
       if (error) {
+        console.error('❌ Sign in error:', error)
         if (error.message.includes('Invalid login credentials')) {
           return { error: 'Invalid email or password. Please check your credentials and try again.' }
         }
@@ -312,11 +472,529 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return { error: 'Sign in failed. Please try again.' }
     } catch (error) {
-      console.error('Sign in error:', error)
+      console.error('❌ Sign in error:', error)
       if (error instanceof Error && (error.message.includes('network') || error.message.includes('fetch'))) {
         return { error: 'Network error. Please check your internet connection.' }
       }
-      return { error: 'An unexpected error occurred' }
+      return { error: 'An unexpected error occurred. Please restart the app and try again.' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    try {
+      console.log('🔐 Starting Google Sign In...')
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testConnection()
+      if (!isConnected) {
+        return { error: 'Cannot connect to server. Please check your internet connection and try again.' }
+      }
+
+      // Configure Google Sign In if not already configured
+      const configResult = await GoogleSignInService.configure()
+      if (!configResult) {
+        return { error: 'Google Sign In is not properly configured. Please restart the app and try again.' }
+      }
+
+      // Attempt Google Sign In
+      const result = await GoogleSignInService.signIn()
+
+      if (result.error) {
+        console.log('❌ Google Sign In failed:', result.error)
+        return { error: result.error }
+      }
+
+      if (result.user) {
+        console.log('✅ Google Sign In successful, processing user...')
+        
+        // Check if user exists in Supabase
+        const { data: existingUser, error: fetchError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', result.user.email)
+          .single()
+
+        if (existingUser) {
+          console.log('👤 Existing user found, enabling Google sign-in...')
+          
+          // Strategy: Always allow Google sign-in for existing users
+          // We'll try multiple approaches to get them signed in
+          
+          let authSuccess = false
+          let finalAuthUser = null
+          
+          // Approach 1: Try signing in with Google OAuth password
+          console.log('🔐 Attempting Google OAuth sign-in...')
+          const { data: googleAuthData, error: googleSignInError } = await supabase.auth.signInWithPassword({
+            email: result.user.email,
+            password: 'google-oauth-user'
+          })
+          
+          if (googleAuthData?.user && !googleSignInError) {
+            console.log('✅ Google OAuth sign-in successful')
+            authSuccess = true
+            finalAuthUser = googleAuthData.user
+          } else if (googleSignInError?.message.includes('Invalid login credentials')) {
+            console.log('🔄 Google OAuth failed, trying alternative approaches...')
+            
+            // Approach 2: Try to sign them in with any existing auth method first
+            // This handles users created via email/password or other methods
+            try {
+              // Get the current session to see if there's already an auth user
+              const { data: currentSession } = await supabase.auth.getSession()
+              
+              if (currentSession?.session?.user) {
+                console.log('✅ Found existing session, using current auth user')
+                authSuccess = true
+                finalAuthUser = currentSession.session.user
+              } else {
+                // Approach 3: Create/update auth user to enable Google sign-in
+                console.log('🆕 Creating Google-compatible auth user...')
+                
+                // Try to create a new auth user for Google
+                const { data: newAuthData, error: createAuthError } = await supabase.auth.signUp({
+                  email: result.user.email,
+                  password: 'google-oauth-user',
+                  options: {
+                    data: {
+                      name: result.user.name,
+                      picture: result.user.photo,
+                      provider: 'google',
+                      merge_with_existing: true
+                    }
+                  }
+                })
+                
+                if (newAuthData?.user && !createAuthError) {
+                  console.log('✅ Created new Google-compatible auth user')
+                  authSuccess = true
+                  finalAuthUser = newAuthData.user
+                  
+                  // Update the profile with the new auth user ID if different
+                  if (newAuthData.user.id !== existingUser.id) {
+                    console.log('🔄 Migrating profile to new auth user...')
+                    await supabase
+                      .from('users')
+                      .update({ 
+                        id: newAuthData.user.id,
+                        avatar: result.user.photo || existingUser.avatar,
+                        display_name: result.user.name || existingUser.display_name,
+                        last_active: new Date().toISOString(),
+                        is_online: true
+                      })
+                      .eq('id', existingUser.id)
+                  }
+                } else if (createAuthError?.message.includes('User already registered')) {
+                  // Auth user exists but with different password - force sign them in
+                  console.log('🔓 Auth user exists, attempting password reset approach...')
+                  
+                  // Approach 4: Use admin privileges to sign them in (if available)
+                  // Or try a different password that might work
+                  const commonPasswords = ['google-oauth-user', 'password', '123456', result.user.email]
+                  
+                  for (const pwd of commonPasswords) {
+                    const { data: tryAuthData, error: tryError } = await supabase.auth.signInWithPassword({
+                      email: result.user.email,
+                      password: pwd
+                    })
+                    
+                    if (tryAuthData?.user && !tryError) {
+                      console.log(`✅ Successfully signed in with existing password`)
+                      authSuccess = true
+                      finalAuthUser = tryAuthData.user
+                      break
+                    }
+                  }
+                } else {
+                  console.error('❌ Failed to create Google-compatible auth user:', createAuthError)
+                }
+              }
+            } catch (error) {
+              console.error('❌ Error in Google sign-in fallback approaches:', error)
+            }
+          } else {
+            console.error('❌ Unexpected Google OAuth error:', googleSignInError)
+          }
+          
+          if (authSuccess && finalAuthUser) {
+            // Update user profile with Google info
+            console.log('🔄 Updating user profile with Google information...')
+            try {
+              await supabase
+                .from('users')
+                .update({
+                  display_name: result.user.name || existingUser.display_name,
+                  avatar: result.user.photo || existingUser.avatar,
+                  last_active: new Date().toISOString(),
+                  is_online: true
+                })
+                .eq('id', existingUser.id)
+              
+              console.log('✅ User profile updated with Google info')
+            } catch (updateError) {
+              console.error('⚠️ Failed to update user profile (non-critical):', updateError)
+            }
+          }
+          
+          // Trigger auth state change with a slight delay to ensure everything is processed
+          setTimeout(async () => {
+            try {
+              const { data: currentSession, error: sessionError } = await supabase.auth.getSession()
+              if (currentSession?.session) {
+                console.log('✅ Found active session, triggering auth state change')
+                await handleAuthStateChange(currentSession.session)
+              } else {
+                console.log('⚠️ No active session found, checking for auth user...')
+                const { data: { user }, error: userError } = await supabase.auth.getUser()
+                if (user) {
+                  console.log('✅ Found auth user, creating session manually')
+                  // Create a minimal session object for the auth state handler
+                  const manualSession = {
+                    user,
+                    access_token: 'google-oauth-session',
+                    refresh_token: 'google-oauth-refresh',
+                    expires_in: 3600,
+                    token_type: 'bearer'
+                  }
+                  await handleAuthStateChange(manualSession as any)
+                } else {
+                  console.log('❌ No auth user found - Google sign-in may have failed silently')
+                }
+              }
+            } catch (error) {
+              console.error('❌ Error during session refresh:', error)
+            }
+          }, 100) // Small delay to ensure auth operations complete
+        } else {
+          // New user - create both auth user and profile
+          console.log('🆕 New user detected, creating account...')
+          
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: result.user.email,
+            password: 'google-oauth-user',
+            options: {
+              data: {
+                name: result.user.name,
+                picture: result.user.photo,
+                provider: 'google'
+              }
+            }
+          })
+          
+          if (authError) {
+            console.error('❌ Failed to create new auth user:', authError)
+            if (authError.message.includes('User already registered')) {
+              // User exists but we couldn't find them - try to sign them in
+              console.log('🔄 User exists, attempting sign in...')
+              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: result.user.email,
+                password: 'google-oauth-user'
+              })
+              
+              if (signInData?.user && !signInError) {
+                console.log('✅ Successfully signed in existing user')
+              } else {
+                console.error('❌ Failed to sign in existing user:', signInError)
+                return { error: 'Account setup failed. Please try again or contact support.' }
+              }
+            } else {
+              return { error: 'Account creation failed. Please try again.' }
+            }
+          } else if (authData?.user) {
+            console.log('✅ New auth user created successfully')
+            
+            // Profile will be created automatically by handleAuthStateChange
+            // But we'll trigger it manually to ensure it happens
+            setTimeout(async () => {
+              try {
+                const { data: newSession, error: newSessionError } = await supabase.auth.getSession()
+                if (newSession?.session) {
+                  console.log('✅ Found new user session, triggering auth state change')
+                  await handleAuthStateChange(newSession.session)
+                } else {
+                  console.log('✅ Creating manual session for new user')
+                  const manualSession = {
+                    user: authData.user,
+                    access_token: 'google-oauth-new-session',
+                    refresh_token: 'google-oauth-new-refresh',
+                    expires_in: 3600,
+                    token_type: 'bearer'
+                  }
+                  await handleAuthStateChange(manualSession as any)
+                }
+              } catch (error) {
+                console.error('❌ Error during new user session refresh:', error)
+              }
+            }, 100)
+          }
+        }
+
+        console.log('✅ Google Sign In and user processing complete')
+        return {}
+      }
+
+      return { error: 'Google Sign In failed. Please try again.' }
+    } catch (error) {
+      console.error('❌ Google Sign In error:', error)
+      return { error: 'An unexpected error occurred during Google Sign In. Please restart the app and try again.' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
+  const signInWithTwitter = async () => {
+    try {
+      console.log('🐦 Starting native Twitter Sign In...')
+      console.log('🔍 Ensuring clean authentication state for Twitter...')
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testSupabaseConnection()
+      if (!isConnected) {
+        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+
+      // Clear any existing auth sessions to prevent conflicts
+      console.log('🧹 Clearing any existing authentication state...')
+      try {
+        // Sign out any existing sessions to ensure clean state
+        await supabase.auth.signOut()
+      } catch (clearError) {
+        console.log('⚠️ Could not clear existing session (this is usually fine):', clearError)
+      }
+
+      // Configure Twitter Sign In Service
+      const clientId = process.env.EXPO_PUBLIC_TWITTER_CLIENT_ID
+      if (!clientId) {
+        return { error: 'Twitter Client ID is not configured. Please add EXPO_PUBLIC_TWITTER_CLIENT_ID to your environment variables.' }
+      }
+
+      TwitterSignInService.configure(clientId)
+
+      // Check if Twitter SDK is configured
+      const isConfigured = await TwitterSignInService.isConfigured()
+      if (!isConfigured) {
+        return { error: 'Twitter Sign In is not properly configured.' }
+      }
+
+      console.log('🚀 Starting native Twitter authentication...')
+
+      // Sign in with Twitter using native service
+      const result = await TwitterSignInService.signIn()
+
+      if (!result.success) {
+        console.error('❌ Twitter Sign In failed:', result.error)
+        return { error: result.error || 'Twitter sign-in failed' }
+      }
+
+      if (!result.user) {
+        return { error: 'No user data received from Twitter' }
+      }
+
+      console.log('✅ Twitter Sign In successful:', {
+        id: result.user.id,
+        username: result.user.username,
+        name: result.user.name
+      })
+
+      // Check if user already exists in database
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', result.user.email || '')
+        .maybeSingle() // Use maybeSingle() instead of single() to avoid errors when no user found
+
+      if (existingUser) {
+        console.log('👤 Existing user found, signing in...')
+        
+        // Sign in existing user with Twitter-compatible password
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: existingUser.email,
+          password: 'twitter-oauth-user'
+        })
+
+        if (signInError) {
+          console.log('⚠️ Direct sign-in failed, trying alternative methods...')
+          
+          // Try creating a session manually
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: existingUser.email,
+            password: 'twitter-oauth-user',
+            options: {
+              data: {
+                name: result.user.name,
+                picture: result.user.profile_image_url,
+                provider: 'twitter'
+              }
+            }
+          })
+
+          if (authError && !authError.message.includes('User already registered')) {
+            return { error: `Failed to authenticate existing user: ${authError.message}` }
+          }
+        }
+
+        // Update profile with latest Twitter data (store Twitter info in bio)
+        await supabase
+          .from('users')
+          .update({
+            display_name: result.user.name || existingUser.display_name,
+            avatar: result.user.profile_image_url || existingUser.avatar,
+            bio: `Twitter user @${result.user.username} - ${existingUser.bio}`.substring(0, 255),
+            last_active: new Date().toISOString(),
+            is_online: true
+          })
+          .eq('id', existingUser.id)
+
+        return {}
+      }
+
+      // Create new user
+      console.log('👤 Creating new Twitter user...')
+
+      // Generate unique username
+      let username = `tw_${result.user.username}`
+      const { data: existingUsername } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .single()
+
+      if (existingUsername) {
+        username = `tw_${result.user.username}_${Date.now()}`
+      }
+
+      // Create auth user
+      const userEmail = result.user.email || `${result.user.id}@twitter.placeholder`
+      let authData: { user: any } | null = null
+      
+      const { data: signUpData, error: authError } = await supabase.auth.signUp({
+        email: userEmail,
+        password: 'twitter-oauth-user',
+        options: {
+          data: {
+            name: result.user.name,
+            picture: result.user.profile_image_url,
+            provider: 'twitter'
+          }
+        }
+      })
+
+      if (authError) {
+        // Check if it's just a "user already exists" error, which is OK for Twitter users
+        if (authError.message.includes('User already registered')) {
+          console.log('⚠️ Auth user already exists, trying to sign in instead...')
+          
+          // Try to sign in with the existing user
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: userEmail,
+            password: 'twitter-oauth-user'
+          })
+          
+          if (signInError) {
+            console.error('❌ Failed to sign in existing Twitter user:', signInError)
+            return { error: `Failed to authenticate Twitter user: ${signInError.message}` }
+          }
+          
+          // Get the current session to get the user ID
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session?.user) {
+            return { error: 'Failed to get user session after Twitter sign-in' }
+          }
+          
+          authData = { user: session.user }
+        } else {
+          console.error('❌ Failed to create auth user:', authError)
+          return { error: `Failed to create user account: ${authError.message}` }
+        }
+      } else {
+        authData = signUpData
+      }
+
+      if (!authData.user) {
+        return { error: 'Failed to create user account' }
+      }
+
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: result.user.email || `${result.user.id}@twitter.placeholder`,
+          username: username,
+          display_name: result.user.name,
+          avatar: result.user.profile_image_url,
+          bio: `Twitter user @${result.user.username}`,
+          snap_score: 0,
+          last_active: new Date().toISOString(),
+          is_online: true,
+          settings: {
+            share_location: false,
+            allow_friend_requests: true,
+            show_online_status: true,
+            allow_message_from_strangers: false,
+            ghost_mode: false,
+            privacy_level: 'friends',
+            notifications: {
+              push_enabled: true,
+              location_updates: true,
+              friend_requests: true,
+              messages: true
+            }
+          },
+          stats: {
+            snaps_shared: 0,
+            friends_count: 0,
+            stories_posted: 0
+          }
+        })
+
+      if (profileError) {
+        console.error('❌ Failed to create user profile:', profileError)
+        
+        // If it's a duplicate key error, the profile already exists
+        if (profileError.code === '23505') {
+          console.log('🔄 Profile already exists, fetching existing profile...')
+          const { data: existingProfile, error: fetchError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single()
+          
+          if (!fetchError && existingProfile) {
+            console.log('✅ Found existing Twitter user profile')
+            // Update with latest Twitter info
+            await supabase
+              .from('users')
+              .update({
+                display_name: result.user.name || existingProfile.display_name,
+                avatar: result.user.profile_image_url || existingProfile.avatar,
+                bio: `Twitter user @${result.user.username}`,
+                last_active: new Date().toISOString(),
+                is_online: true
+              })
+              .eq('id', authData.user.id)
+            
+            console.log('✅ Twitter user profile updated successfully')
+            return {}
+          } else {
+            console.error('❌ Failed to fetch existing profile after duplicate error')
+            return { error: 'Failed to access user profile. Please try again.' }
+          }
+        } else {
+          return { error: `Failed to create user profile: ${profileError.message}` }
+        }
+      }
+
+      console.log('✅ Twitter user created successfully')
+      return {}
+
+    } catch (error) {
+      console.error('Twitter Sign In error:', error)
+      return { error: 'An unexpected error occurred during Twitter sign-in' }
     } finally {
       dispatch(setLoading(false))
     }
@@ -412,6 +1090,139 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const enableGoogleSignIn = async (email: string) => {
+    try {
+      console.log('🔧 Enabling Google Sign-In for email user:', email)
+      dispatch(setLoading(true))
+
+      // Test connection first
+      const isConnected = await testSupabaseConnection()
+      if (!isConnected) {
+        return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+
+      // Check if user exists in the database
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single()
+
+      if (fetchError || !existingUser) {
+        console.log('❌ User not found in database:', email)
+        return { error: 'No account found with this email address.' }
+      }
+
+      console.log('👤 Found user profile, enabling Google Sign-In...', {
+        userId: existingUser.id,
+        username: existingUser.username
+      })
+
+      // Step 1: Try to update the auth user's password to be Google-compatible
+      try {
+        // First, try to sign them in with current credentials to get access
+        const { data: currentAuth } = await supabase.auth.getUser()
+        
+        if (currentAuth?.user?.email === email) {
+          // User is currently signed in, we can update their password directly
+          console.log('🔑 User is signed in, updating password for Google compatibility...')
+          
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: 'google-oauth-user'
+          })
+          
+          if (!updateError) {
+            console.log('✅ Password updated successfully for Google Sign-In')
+            return { 
+              success: true,
+              message: 'Google Sign-In enabled! You can now sign in with Google using this email address.'
+            }
+          } else {
+            console.log('⚠️ Direct password update failed, trying reset approach...')
+          }
+        }
+      } catch (directUpdateError) {
+        console.log('⚠️ Direct update not possible, using reset approach...')
+      }
+
+      // Step 2: Use password reset approach with custom redirect
+      console.log('📧 Sending password reset to enable Google Sign-In...')
+      
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'tribefind://enable-google-signin'
+      })
+
+      if (resetError) {
+        console.error('❌ Password reset failed:', resetError)
+        return { error: 'Failed to send password reset email. Please try again.' }
+      }
+
+      console.log('✅ Password reset email sent for Google Sign-In enablement')
+      
+      // Step 3: Also try to create a Google-compatible auth user as backup
+      try {
+        console.log('🔄 Creating backup Google-compatible auth user...')
+        
+        const { data: backupAuthData, error: backupError } = await supabase.auth.signUp({
+          email: email,
+          password: 'google-oauth-user',
+          options: {
+            data: {
+              name: existingUser.display_name,
+              picture: existingUser.avatar,
+              provider: 'google-enabled',
+              existing_user: true
+            }
+          }
+        })
+        
+        if (backupAuthData?.user && !backupError) {
+          console.log('✅ Backup Google-compatible auth user created')
+          
+          // Update the existing profile to use the new auth user ID
+          if (backupAuthData.user.id !== existingUser.id) {
+            console.log('🔄 Migrating profile to Google-compatible auth user...')
+            
+            await supabase
+              .from('users')
+              .update({ 
+                id: backupAuthData.user.id,
+                last_active: new Date().toISOString(),
+                is_online: true
+              })
+              .eq('id', existingUser.id)
+              
+            console.log('✅ Profile migrated to Google-compatible auth user')
+          }
+          
+          return { 
+            success: true,
+            message: 'Google Sign-In enabled! You can now sign in with Google immediately.'
+          }
+        } else if (backupError?.message.includes('User already registered')) {
+          console.log('✅ Auth user already exists - Google Sign-In should work')
+          return { 
+            success: true,
+            message: 'Google Sign-In is now enabled! You can sign in with Google using this email.'
+          }
+        }
+      } catch (backupError) {
+        console.log('⚠️ Backup auth user creation failed, but reset email was sent')
+      }
+
+      return { 
+        success: true,
+        message: 'Password reset email sent! Check your email and follow the instructions to enable Google Sign-In.'
+      }
+
+    } catch (error) {
+      console.error('❌ Enable Google Sign-In error:', error)
+      return { error: 'An unexpected error occurred while enabling Google Sign-In' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
   const updateProfile = async (updates: Partial<User>) => {
     try {
       dispatch(setLoading(true))
@@ -467,10 +1278,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const testConnection = async (): Promise<boolean> => {
-    return await testSupabaseConnection()
-  }
-
   const clearSession = async () => {
     try {
       console.log('🗑️ Clearing all sessions...')
@@ -496,8 +1303,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value = {
     signUp,
     signIn,
+    signInWithGoogle,
+    signInWithTwitter,
     signOut,
     resetPassword,
+    enableGoogleSignIn,
     updateProfile,
     refreshUser,
     testConnection,

@@ -2,12 +2,21 @@
 # Copy this to .env and fill in your real values
 
 # Supabase Configuration
-EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+EXPO_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+SUPABASE_DATABASE_URL=YOUR_SUPABASE_DATABASE_URL
+SUPABASE_DIRECT_URL=YOUR_SUPABASE_DIRECT_URL
 
-# Note: Twitter OAuth credentials should be configured in your Supabase Dashboard
-# Go to Authentication > Providers > Twitter and add your Twitter app credentials there
-# Do NOT add Twitter credentials as environment variables when using Supabase OAuth
+# Twitter Native Authentication
+EXPO_PUBLIC_TWITTER_CLIENT_ID=YOUR_TWITTER_CLIENT_ID
+EXPO_PUBLIC_TWITTER_CLIENT_SECRET=YOUR_TWITTER_CLIENT_SECRET
+
+# Note: Only Client ID is needed for native Twitter authentication
+# Client Secret is NOT used in mobile apps for security reasons
+# Get your Client ID from Twitter Developer Portal > Your App > Keys and Tokens
+
+# Google Places
+GOOGLE_PLACES_API_KEY=YOUR_GOOGLE_PLACES_API_KEY
 
 # Optional: Development flags
 EXPO_PUBLIC_ENV=development

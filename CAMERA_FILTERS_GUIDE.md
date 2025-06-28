@@ -100,8 +100,8 @@ CameraScreen
 
 ### Dependencies
 - `expo-image-manipulator`: Core image processing
-- `expo-gl`: For advanced effects (future enhancement)
-- `expo-gl-cpp`: GPU acceleration support
+- `expo-gl`: Removed (was causing build issues, not currently used)
+- `expo-gl-cpp`: Removed (was causing build issues, not currently used)
 - `react-native-svg`: Vector graphics support
 
 ## Future Enhancements
