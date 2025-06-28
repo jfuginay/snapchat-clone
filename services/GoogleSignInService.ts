@@ -51,7 +51,7 @@ export class GoogleSignInService {
       // Check if Google Sign-In is available
       if (!GoogleSignin || !statusCodes) {
         return { 
-          error: 'Google Sign-In is not available in this environment. Please use a development build, TestFlight, or production app for Google Sign-In functionality.' 
+          error: 'Google Sign-In is not available in Expo Go. For full Google Sign-In functionality, please use a development build, TestFlight, or production app. You can use email/password authentication in the meantime.' 
         }
       }
 

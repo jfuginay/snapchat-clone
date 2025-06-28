@@ -847,7 +847,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (profileError) {
         console.error('❌ Failed to create user profile:', profileError)
-        return { error: `Failed to create user profile: ${profileError.message}` }
+        
+        // If it's a duplicate key error, the profile already exists
+        if (profileError.code === '23505') {
+          console.log('🔄 Profile already exists, fetching existing profile...')
+          const { data: existingProfile, error: fetchError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single()
+          
+          if (!fetchError && existingProfile) {
+            console.log('✅ Found existing Twitter user profile')
+            // Update with latest Twitter info
+            await supabase
+              .from('users')
+              .update({
+                display_name: result.user.name || existingProfile.display_name,
+                avatar: result.user.profile_image_url || existingProfile.avatar,
+                bio: `Twitter user @${result.user.username}`,
+                last_active: new Date().toISOString(),
+                is_online: true
+              })
+              .eq('id', authData.user.id)
+            
+            console.log('✅ Twitter user profile updated successfully')
+            return {}
+          } else {
+            console.error('❌ Failed to fetch existing profile after duplicate error')
+            return { error: 'Failed to access user profile. Please try again.' }
+          }
+        } else {
+          return { error: `Failed to create user profile: ${profileError.message}` }
+        }
       }
 
       console.log('✅ Twitter user created successfully')
