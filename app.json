@@ -23,7 +23,7 @@
     "scheme": "tribefind",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "20",
+      "buildNumber": "21",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to capture and share photos.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for video recording.",
