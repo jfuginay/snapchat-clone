@@ -19,10 +19,12 @@ import MapView, {
   MarkerPressEvent 
 } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAppSelector } from '../store';
 import locationService from '../src/services/locationService';
 import ActivityFilter from '../components/ActivityFilter';
+import RAGNotifications from '../components/RAGNotifications';
 
 const { width, height } = Dimensions.get('window');
 
@@ -74,6 +76,10 @@ const MapScreen: React.FC = () => {
   const [selectedActivityFilters, setSelectedActivityFilters] = useState<string[]>([]);
   const [allTribeMembers, setAllTribeMembers] = useState<TribeMember[]>([]); // Store all unfiltered results
   const [filteredTribeMembers, setFilteredTribeMembers] = useState<TribeMember[]>([]); // Store filtered results
+  
+  // RAG notifications state
+  const [showRAGNotifications, setShowRAGNotifications] = useState(false);
+  const [ragNotificationCount, setRagNotificationCount] = useState(0);
 
   // Initial region (San Francisco as default)
   const [region, setRegion] = useState<Region>({
@@ -829,6 +835,28 @@ const MapScreen: React.FC = () => {
       </View>
 
       {/* Member Details Modal */}
+
+      {/* RAG Smart Notifications */}
+      <RAGNotifications
+        visible={showRAGNotifications}
+        onClose={() => setShowRAGNotifications(false)}
+      />
+
+      {/* Floating RAG Button */}
+      <TouchableOpacity
+        style={styles.ragFloatingButton}
+        onPress={() => setShowRAGNotifications(true)}
+      >
+        <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+        <Text style={styles.ragButtonText}>Smart Places</Text>
+        {ragNotificationCount > 0 && (
+          <View style={styles.ragNotificationBadge}>
+            <Text style={styles.ragNotificationBadgeText}>
+              {ragNotificationCount > 9 ? "9+" : ragNotificationCount}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
       {renderMemberModal()}
     </View>
   );
@@ -1143,6 +1171,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButtonText: {
+  },
+  ragFloatingButton: {
+    position: "absolute",
+    bottom: 120,
+    right: 20,
+    backgroundColor: "#6366f1",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  ragButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  ragNotificationBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#ef4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  ragNotificationBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "bold",
     color: '#374151',
     fontSize: 16,
     fontWeight: '500',
