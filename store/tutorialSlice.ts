@@ -24,7 +24,7 @@ const tutorialSlice = createSlice({
     
     completeTutorial: (state) => {
       state.hasCompletedOnboarding = true
-      state.lastCompletedStep = 9 // Total steps - 1
+      state.lastCompletedStep = 3 // Total steps - 1 (now 4 steps: 0,1,2,3)
       state.tutorialVisible = false
       state.firstTimeUser = false
     },

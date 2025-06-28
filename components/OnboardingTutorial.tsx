@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAppSelector } from '../store'
@@ -42,136 +44,120 @@ export default function OnboardingTutorial({
 }: OnboardingTutorialProps) {
   const [currentStep, setCurrentStep] = useState(startFromStep)
   const { user } = useAppSelector((state: any) => state.auth)
+  
+  // Animation values
+  const pulseAnim = useRef(new Animated.Value(0)).current
+  const glowAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(0)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+
+  // Start animations when visible
+  useEffect(() => {
+    if (visible) {
+      // Pulse animation for icons
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0,
+            duration: 1000,  
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start()
+
+      // Glow animation for highlights
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start()
+    }
+  }, [visible, pulseAnim, glowAnim])
+
+  // Slide in animation when step changes
+  useEffect(() => {
+    if (visible) {
+      slideAnim.setValue(-width)
+      fadeAnim.setValue(0)
+      
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [currentStep, visible, slideAnim, fadeAnim])
 
   const tutorialSteps: TutorialStep[] = [
     {
       id: 0,
-      title: `Welcome to TribeFind, ${user?.display_name || 'Friend'}! 🎯`,
-      content: `TribeFind is your AI-powered social discovery platform that helps you find your tribe through shared interests and intelligent location-based connections.\n\nThis quick walkthrough will show you everything you need to know to get started!`,
-      icon: '🚀',
+      title: `Hey ${user?.display_name || 'Friend'}! 👋`,
+      content: `Welcome to TribeFind!\nYour AI-powered tribe discovery starts here.`,
+      icon: '🎯',
       highlights: [
-        'AI-powered social discovery',
-        'Location-based connections', 
-        'Interest matching',
-        'Real-time tribe finding'
+        'Find your tribe instantly',
+        'AI matches you perfectly',
+        'Location + interests magic'
       ]
     },
     {
       id: 1,
-      title: 'Interface Overview 📱',
-      content: `Let's explore your main navigation tabs:\n\n🏠 **Home** - Your photo gallery and main dashboard\n📸 **Camera** - Capture and share moments with filters\n💬 **Chat** - Message your tribe members\n🗺️ **Map** - Discover nearby tribe members\n👤 **Profile** - Manage your account and settings`,
-      icon: '🧭',
+      title: 'Capture & Share 📸',
+      content: `Tap the camera to capture moments\nwith pro filters and instant sharing.`,
+      icon: '📷',
       highlights: [
-        'Five main tabs for easy navigation',
-        'Each tab has unique features',
-        'Seamless switching between features'
+        'Snapchat-quality camera',
+        'Real-time filters',
+        'Instant cloud backup'
       ]
     },
     {
-      id: 2,  
-      title: 'Camera Magic 📸',
-      content: `Your camera isn't just for photos - it's your creative studio!\n\n✨ **Features:**\n• Professional photo capture\n• Real-time filters and effects\n• Front/back camera switching\n• Flash controls\n• Instant cloud backup\n• Gallery integration`,
-      icon: '📷',
+      id: 2,
+      title: 'Discover Your Tribe 🗺️',
+      content: `Our AI finds people who share your vibe.\nLocation + interests = perfect matches.`,
+      icon: '✨',
       highlights: [
-        'Snapchat-quality interface',
-        'Multiple filter options',
-        'Auto-save to cloud',
-        'Professional quality photos'
+        'Smart AI recommendations',
+        'Real-time tribe discovery',
+        'Privacy-first matching'
       ]
     },
     {
       id: 3,
-      title: 'Map & Location Discovery 🗺️',
-      content: `The Map is where the magic happens!\n\n🎯 **Discover:**\n• Nearby tribe members in real-time\n• Interest-based filtering\n• Location sharing controls\n• Privacy-first design\n• Interactive user profiles\n\n**Tip:** Enable location services for the best experience!`,
-      icon: '🌍',
+      title: `Ready to Vibe! 🚀`,
+      content: `You're all set to find your tribe!\nStart exploring and making connections.`,
+      icon: '🎉',
       highlights: [
-        'Real-time user discovery',
-        'Interest-based filtering',
-        'Privacy controls',
-        'Interactive experience'
-      ]
-    },
-    {
-      id: 4,
-      title: 'Chat & Messaging 💬',  
-      content: `Stay connected with your tribe!\n\n💭 **Features:**\n• Real-time messaging\n• Message history\n• Typing indicators\n• Media sharing\n• Group conversations\n• Friend requests\n\n**Pro Tip:** Send a friend request before messaging someone new!`,
-      icon: '📨',
-      highlights: [
-        'Instant real-time messaging',
-        'Rich media support',
-        'Friend system integration',
-        'Group chat capabilities'
-      ]
-    },
-    {
-      id: 5,
-      title: 'Set Your Interests 🎨',
-      content: `Your interests are the key to finding your tribe!\n\n🎯 **Interest System:**\n• 50+ activity categories\n• Photography, Hiking, Coffee, Tech, Music...\n• Smart matching algorithm\n• Discover similar people\n• Activity suggestions\n\n**Action:** Go to Activities screen to set your interests!`,
-      icon: '🎨',
-      highlights: [
-        '50+ activity categories',
-        'Smart matching system',
-        'Personalized recommendations',
-        'Tribe discovery engine'
-      ],
-      actionButton: {
-        text: 'Set My Interests',
-        action: () => {
-          Alert.alert(
-            'Set Interests',
-            'After this tutorial, visit the Activities screen from your profile to set your interests!',
-            [{ text: 'Got it!', style: 'default' }]
-          )
-        }
-      }
-    },
-    {
-      id: 6,
-      title: 'AI-Powered RAG System 🤖',
-      content: `This is what makes TribeFind special - our Retrieval-Augmented Generation (RAG) system!\n\n🧠 **How RAG Works:**\n• Analyzes your location, interests, and social context\n• Provides intelligent recommendations\n• Understands your tribe preferences\n• Suggests activities and meetups\n• Learns from your interactions\n\n**Example:** "What should I do tonight?" → AI considers your location, interests, friends nearby, weather, and time to give personalized suggestions!`,
-      icon: '🤖',
-      highlights: [
-        'Context-aware AI assistance',
-        'Personalized recommendations',
-        'Location + interest analysis',
-        'Smart tribe suggestions',
-        'Learns your preferences'
-      ]
-    },
-    {
-      id: 7,
-      title: 'RAG in Action 🔍',
-      content: `Here's how our AI helps you find your tribe:\n\n🎯 **Smart Scenarios:**\n• "Find coffee shops my friends visited"\n• "What activities are popular nearby?"\n• "Recommend places for photography"\n• "Who shares my hiking interests?"\n\nThe AI combines your location, social graph, interests, and real-time data to give you perfect recommendations!`,
-      icon: '✨',
-      highlights: [
-        'Location-aware suggestions',
-        'Friend network analysis',
-        'Interest-based recommendations',
-        'Real-time context understanding'
-      ]
-    },
-    {
-      id: 8,
-      title: 'Profile & Privacy 👤',
-      content: `Your profile is your tribe identity!\n\n⚙️ **Profile Features:**\n• Display name and bio\n• Interest selection\n• Privacy controls\n• Location sharing settings\n• Connected accounts\n• Activity history\n\n🔒 **Privacy:** You control what you share and with whom. Your data stays secure!`,
-      icon: '🛡️',
-      highlights: [
-        'Complete profile customization',
-        'Granular privacy controls',
-        'Secure data handling',
-        'Control your digital presence'
-      ]
-    },
-    {
-      id: 9,
-      title: `You're Ready to Find Your Tribe! 🎉`,
-      content: `Congratulations! You now know everything about TribeFind.\n\n🚀 **Next Steps:**\n1. Set your interests in Activities\n2. Enable location sharing\n3. Take some photos to share\n4. Explore the map for nearby tribe members\n5. Start conversations!\n\n**Remember:** You can always revisit this tutorial from the "View Walkthrough" button on your home screen.\n\nWelcome to your tribe! 🌟`,
-      icon: '🎊',
-      highlights: [
-        'Complete app mastery',
-        'Ready to connect',
-        'Tutorial always available',
-        'Welcome to TribeFind!'
+        'Everything unlocked',
+        'Start discovering now',
+        'Your tribe awaits!'
       ]
     }
   ]
@@ -197,9 +183,9 @@ export default function OnboardingTutorial({
   const handleSkip = () => {
     Alert.alert(
       'Skip Tutorial?',
-      'You can always access this walkthrough later from the "View Walkthrough" button on your home screen.',
+      'You can always access this walkthrough later from the "View Walkthrough" button.',
       [
-        { text: 'Continue Tutorial', style: 'cancel' },
+        { text: 'Continue', style: 'cancel' },
         { text: 'Skip', style: 'destructive', onPress: onSkip }
       ]
     )
@@ -207,45 +193,81 @@ export default function OnboardingTutorial({
 
   const progressPercentage = ((currentStep + 1) / tutorialSteps.length) * 100
 
+  // Animation interpolations
+  const pulseScale = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.1],
+  })
+
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 1],
+  })
+
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      transparent={true}
     >
-      <LinearGradient
-        colors={['#667eea', '#764ba2', '#6366f1']}
-        style={styles.container}
-      >
-        <SafeAreaView style={styles.safeArea}>
-          {/* Header with progress */}
-          <View style={styles.header}>
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBackground}>
-                <View 
-                  style={[styles.progressBar, { width: `${progressPercentage}%` }]} 
-                />
+      <View style={styles.overlay}>
+        <LinearGradient
+          colors={['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.container}
+        >
+          <SafeAreaView style={styles.safeArea}>
+            {/* Header with dots and skip */}
+            <View style={styles.header}>
+              <View style={styles.dotsContainer}>
+                {tutorialSteps.map((_, index) => (
+                  <Animated.View
+                    key={index}
+                    style={[
+                      styles.dot,
+                      currentStep === index && styles.activeDot,
+                      currentStep === index && {
+                        opacity: glowOpacity,
+                        transform: [{ scale: pulseScale }]
+                      }
+                    ]}
+                  />
+                ))}
               </View>
-              <Text style={styles.progressText}>
-                {currentStep + 1} of {tutorialSteps.length}
-              </Text>
+              
+              <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+                <Text style={styles.skipText}>✕</Text>
+              </TouchableOpacity>
             </View>
-            
-            <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-              <Text style={styles.skipText}>Skip</Text>
-            </TouchableOpacity>
-          </View>
 
-          {/* Content */}
-          <ScrollView 
-            style={styles.content}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.stepContainer}>
-              {/* Icon */}
-              <View style={styles.iconContainer}>
-                <Text style={styles.stepIcon}>{currentStepData.icon}</Text>
-              </View>
+            {/* Main Content */}
+            <Animated.View 
+              style={[
+                styles.content,
+                {
+                  transform: [{ translateX: slideAnim }],
+                  opacity: fadeAnim,
+                }
+              ]}
+            >
+              {/* Large Icon with Pulse */}
+              <Animated.View 
+                style={[
+                  styles.iconContainer,
+                  {
+                    transform: [{ scale: pulseScale }],
+                  }
+                ]}
+              >
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                  style={styles.iconGradient}
+                >
+                  <Text style={styles.stepIcon}>{currentStepData.icon}</Text>
+                </LinearGradient>
+              </Animated.View>
 
               {/* Title */}
               <Text style={styles.stepTitle}>{currentStepData.title}</Text>
@@ -253,71 +275,61 @@ export default function OnboardingTutorial({
               {/* Content */}
               <Text style={styles.stepContent}>{currentStepData.content}</Text>
 
-              {/* Highlights */}
+              {/* Glowing Highlights */}
               {currentStepData.highlights && (
                 <View style={styles.highlightsContainer}>
-                  <Text style={styles.highlightsTitle}>✨ Key Features:</Text>
                   {currentStepData.highlights.map((highlight, index) => (
-                    <View key={index} style={styles.highlightItem}>
-                      <Text style={styles.highlightBullet}>•</Text>
-                      <Text style={styles.highlightText}>{highlight}</Text>
-                    </View>
+                    <Animated.View 
+                      key={index} 
+                      style={[
+                        styles.highlightItem,
+                        {
+                          opacity: glowOpacity,
+                        }
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
+                        style={styles.highlightGradient}
+                      >
+                        <Text style={styles.highlightText}>{highlight}</Text>
+                      </LinearGradient>
+                    </Animated.View>
                   ))}
                 </View>
               )}
+            </Animated.View>
 
-              {/* Action Button */}
-              {currentStepData.actionButton && (
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={currentStepData.actionButton.action}
-                >
+            {/* Large Next Button */}
+            <View style={styles.navigation}>
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={handleNext}
+              >
+                <Animated.View style={{ transform: [{ scale: pulseScale }] }}>
                   <LinearGradient
-                    colors={['#8b5cf6', '#6366f1']}
-                    style={styles.actionButtonGradient}
+                    colors={['#FF6B6B', '#4ECDC4']}
+                    style={styles.nextButtonGradient}
                   >
-                    <Text style={styles.actionButtonText}>
-                      {currentStepData.actionButton.text}
+                    <Text style={styles.nextButtonText}>
+                      {isLastStep ? 'Let\'s Go! 🚀' : currentStep === 0 ? 'Start Tour' : 'Next →'}
                     </Text>
                   </LinearGradient>
-                </TouchableOpacity>
-              )}
+                </Animated.View>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-
-          {/* Navigation */}
-          <View style={styles.navigation}>
-            <TouchableOpacity
-              style={[styles.navButton, isFirstStep && styles.navButtonDisabled]}
-              onPress={handlePrevious}
-              disabled={isFirstStep}
-            >
-              <Text style={[styles.navButtonText, isFirstStep && styles.navButtonTextDisabled]}>
-                ← Previous
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={handleNext}
-            >
-              <LinearGradient
-                colors={['#8b5cf6', '#6366f1']}
-                style={styles.nextButtonGradient}
-              >
-                <Text style={styles.nextButtonText}>
-                  {isLastStep ? 'Complete! 🎉' : 'Next →'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+          </SafeAreaView>
+        </LinearGradient>
+      </View>
     </Modal>
   )
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
   container: {
     flex: 1,
   },
@@ -328,176 +340,142 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  progressContainer: {
-    flex: 1,
-    marginRight: 20,
+  dotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  progressBackground: {
-    height: 6,
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 3,
-    marginBottom: 5,
+    marginHorizontal: 6,
   },
-  progressBar: {
-    height: '100%',
+  activeDot: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 8,
   },
   skipButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   skipText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-  },
-  stepContainer: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 20,
-    padding: 30,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  iconContainer: {
-    alignSelf: 'center',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderWidth: 2,
-    borderColor: '#8b5cf6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 40,
+  },
+  iconContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  iconGradient: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   stepIcon: {
-    fontSize: 35,
+    fontSize: 60,
+    textAlign: 'center',
   },
   stepTitle: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 15,
-    lineHeight: 30,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   stepContent: {
-    fontSize: 16,
-    color: '#374151',
-    lineHeight: 24,
-    marginBottom: 20,
+    fontSize: 18,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: 40,
+    opacity: 0.9,
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   highlightsContainer: {
-    backgroundColor: 'rgba(139, 92, 246, 0.05)',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-  },
-  highlightsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#8b5cf6',
-    marginBottom: 10,
+    width: '100%',
+    alignItems: 'center',
   },
   highlightItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 12,
+    width: '100%',
   },
-  highlightBullet: {
-    color: '#8b5cf6',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 8,
-    marginTop: 2,
+  highlightGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   highlightText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 20,
-  },
-  actionButton: {
-    borderRadius: 12,
-    marginTop: 10,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  actionButtonGradient: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  navigation: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  navButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  navButtonDisabled: {
-    opacity: 0.5,
-  },
-  navButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    textAlign: 'center',
     fontWeight: '600',
   },
-  navButtonTextDisabled: {
-    color: 'rgba(255,255,255,0.5)',
+  navigation: {
+    paddingHorizontal: 40,
+    paddingBottom: 50,
   },
   nextButton: {
-    borderRadius: 12,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 20,
+    elevation: 15,
   },
   nextButtonGradient: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    minWidth: 120,
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    borderRadius: 30,
     alignItems: 'center',
+    minHeight: 60,
+    justifyContent: 'center',
   },
   nextButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
 }) 
