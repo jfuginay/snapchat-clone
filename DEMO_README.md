@@ -11,17 +11,29 @@ This is a complete social discovery app built with React Native/Expo. Students a
 npm install
 ```
 
-### 2. **Start Expo Development Server**
+### 2. **Setup Environment (IMPORTANT)**
+The demo script will automatically create the environment file, but if you need to create it manually:
+
+```bash
+# Create .env.local file with demo credentials
+cat > .env.local << 'EOF'
+EXPO_PUBLIC_SUPABASE_URL=https://rfvlxtzjtcaxkxisyuys.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmdmx4dHpqdGNheGt4aXN5dXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3Nzg3NDgsImV4cCI6MjA2NjM1NDc0OH0.OrN9YGA5rzcC1mUjxd2maeAUFmnx9VixMgnm_LdLIVM
+GOOGLE_PLACES_API_KEY=AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho
+EOF
+```
+
+### 3. **Start Expo Development Server**
 ```bash
 npx expo start
 ```
 
-### 3. **Run on Device/Simulator**
+### 4. **Run on Device/Simulator**
 - **iOS Simulator**: Press `i` in the terminal
 - **Android Emulator**: Press `a` in the terminal  
 - **Physical Device**: Scan QR code with Expo Go app
 
-### 4. **Demo Accounts (Pre-configured)**
+### 5. **Demo Accounts (Pre-configured)**
 ```
 Primary Demo Account:
 Email: demo@tribefind.app
