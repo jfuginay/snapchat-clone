@@ -697,7 +697,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { data: existingUser, error: fetchError } = await supabase
         .from('users')
         .select('*')
-        .or(`email.eq.${result.user.email || ''},social_accounts->twitter->>id.eq.${result.user.id}`)
+        .eq('email', result.user.email || '')
         .maybeSingle() // Use maybeSingle() instead of single() to avoid errors when no user found
 
       if (existingUser) {
@@ -730,21 +730,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
 
-        // Update profile with latest Twitter data
+        // Update profile with latest Twitter data (store Twitter info in bio)
         await supabase
           .from('users')
           .update({
-            social_accounts: {
-              ...(existingUser.social_accounts || {}),
-              twitter: {
-                id: result.user.id,
-                username: result.user.username,
-                name: result.user.name,
-                profile_image_url: result.user.profile_image_url,
-                verified: result.user.verified,
-                public_metrics: result.user.public_metrics
-              }
-            },
+            display_name: result.user.name || existingUser.display_name,
+            avatar: result.user.profile_image_url || existingUser.avatar,
+            bio: `Twitter user @${result.user.username} - ${existingUser.bio}`.substring(0, 255),
             last_active: new Date().toISOString(),
             is_online: true
           })
@@ -829,19 +821,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
           display_name: result.user.name,
           avatar: result.user.profile_image_url,
           bio: `Twitter user @${result.user.username}`,
-          social_accounts: {
-            twitter: {
-              id: result.user.id,
-              username: result.user.username,
-              name: result.user.name,
-              profile_image_url: result.user.profile_image_url,
-              verified: result.user.verified,
-              public_metrics: result.user.public_metrics
+          snap_score: 0,
+          last_active: new Date().toISOString(),
+          is_online: true,
+          settings: {
+            share_location: false,
+            allow_friend_requests: true,
+            show_online_status: true,
+            allow_message_from_strangers: false,
+            ghost_mode: false,
+            privacy_level: 'friends',
+            notifications: {
+              push_enabled: true,
+              location_updates: true,
+              friend_requests: true,
+              messages: true
             }
           },
-          created_at: new Date().toISOString(),
-          last_active: new Date().toISOString(),
-          is_online: true
+          stats: {
+            snaps_shared: 0,
+            friends_count: 0,
+            stories_posted: 0
+          }
         })
 
       if (profileError) {

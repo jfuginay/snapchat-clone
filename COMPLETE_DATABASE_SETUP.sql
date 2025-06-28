@@ -266,6 +266,11 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Drop existing triggers first to avoid conflicts
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+DROP TRIGGER IF EXISTS update_activities_updated_at ON activities;
+DROP TRIGGER IF EXISTS update_user_activities_updated_at ON user_activities;
+
 -- Create triggers for updating timestamps
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -279,6 +284,12 @@ CREATE TRIGGER update_user_activities_updated_at BEFORE UPDATE ON user_activitie
 -- =======================
 -- POSTGIS FUNCTIONS FOR MAP
 -- =======================
+
+-- Drop existing function first to avoid conflicts (handle all possible variations)
+DROP FUNCTION IF EXISTS get_nearby_tribe_members(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER, INTEGER[]);
+DROP FUNCTION IF EXISTS get_nearby_tribe_members(NUMERIC, NUMERIC, INTEGER, INTEGER[]);
+DROP FUNCTION IF EXISTS get_nearby_tribe_members(REAL, REAL, INTEGER, INTEGER[]);
+DROP FUNCTION IF EXISTS get_nearby_tribe_members CASCADE;
 
 -- Function to find nearby tribe members with shared activities
 CREATE OR REPLACE FUNCTION get_nearby_tribe_members(
