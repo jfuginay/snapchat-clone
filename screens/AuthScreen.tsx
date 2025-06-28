@@ -15,6 +15,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth } from '../services/AuthService'
 import { GoogleSignInService } from '../services/GoogleSignInService'
+import { useAppDispatch } from '../store'
+import { setTutorialVisible } from '../store/tutorialSlice'
 
 const { width, height } = Dimensions.get('window')
 
@@ -28,6 +30,7 @@ export default function AuthScreen() {
   const [googleSignInAvailable, setGoogleSignInAvailable] = useState(false)
 
   const { signIn, signUp, signInWithGoogle, signInWithTwitter, clearSession, enableGoogleSignIn } = useAuth()
+  const dispatch = useAppDispatch()
 
   useEffect(() => {
     // Force Google Sign-In to always be available - never grey it out
@@ -52,6 +55,12 @@ export default function AuthScreen() {
       let result
       if (isSignUp) {
         result = await signUp(email, password, username, displayName)
+        // For new signups, prepare to show the tutorial after successful authentication
+        if (!result.error) {
+          setTimeout(() => {
+            dispatch(setTutorialVisible(true))
+          }, 2000) // Show tutorial 2 seconds after successful signup
+        }
       } else {
         result = await signIn(email, password)
       }

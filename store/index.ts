@@ -5,6 +5,7 @@ import locationSlice from './locationSlice'
 import privacySlice from './privacySlice'
 import contactsSlice from './contactsSlice'
 import messagingSlice from './messagingSlice'
+import tutorialSlice from './tutorialSlice'
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +14,7 @@ export const store = configureStore({
     privacy: privacySlice,
     contacts: contactsSlice,
     messaging: messagingSlice,
+    tutorial: tutorialSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
