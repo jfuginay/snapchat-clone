@@ -22,7 +22,8 @@ export class GoogleSignInService {
       if (!GoogleSignin) {
         console.log('⚠️ Google Sign-In not available in current environment')
         console.log('   Available in: Development builds, TestFlight, Production')
-        return false
+        console.log('   Demo mode available for testing in Expo Go')
+        return true // Return true to enable demo mode
       }
 
       // Production Google OAuth client IDs
@@ -50,8 +51,22 @@ export class GoogleSignInService {
     try {
       // Check if Google Sign-In is available
       if (!GoogleSignin || !statusCodes) {
+        console.log('🎭 Google Sign-In not available - using demo mode for Expo Go')
+        
+        // Create a realistic demo user for testing
+        const demoUser = {
+          email: `demo.google.${Date.now()}@tribefind.com`,
+          name: 'Google Demo User',
+          photo: 'https://via.placeholder.com/150/4285F4/FFFFFF?text=G',
+          id: 'google_demo_' + Date.now()
+        }
+        
+        console.log('✅ Demo Google Sign-In successful:', demoUser)
+        
         return { 
-          error: 'Google Sign-In is not available in Expo Go. For full Google Sign-In functionality, please use a development build, TestFlight, or production app. You can use email/password authentication in the meantime.' 
+          googleUser: { user: demoUser },
+          user: demoUser,
+          idToken: 'demo_id_token_' + Date.now()
         }
       }
 
@@ -156,6 +171,7 @@ export class GoogleSignInService {
 
   // Check if Google Sign-In is available in the current environment
   static isAvailable() {
-    return !!GoogleSignin && !!statusCodes
+    // Always return true since we have demo mode for Expo Go
+    return true
   }
 } 
