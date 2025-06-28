@@ -30,8 +30,8 @@ export default function AuthScreen() {
   const { signIn, signUp, signInWithGoogle, signInWithTwitter, clearSession, enableGoogleSignIn } = useAuth()
 
   useEffect(() => {
-    // Check if Google Sign-In is available
-    setGoogleSignInAvailable(GoogleSignInService.isAvailable())
+    // Always enable Google Sign-In since we have fallback mode
+    setGoogleSignInAvailable(true)
   }, [])
 
   const handleAuth = async () => {
@@ -66,15 +66,6 @@ export default function AuthScreen() {
   }
 
   const handleGoogleSignIn = async () => {
-    if (!googleSignInAvailable) {
-      Alert.alert(
-        'Google Sign-In Not Available', 
-        'Google Sign-In requires a development build or production app. It\'s not available in Expo Go.\n\nYou can still use email/password authentication!',
-        [{ text: 'OK', style: 'default' }]
-      )
-      return
-    }
-
     setLoading(true)
     try {
       const result = await signInWithGoogle()
@@ -261,32 +252,18 @@ export default function AuthScreen() {
                 <TouchableOpacity
                   style={[
                     styles.googleButton, 
-                    loading && styles.authButtonDisabled,
-                    !googleSignInAvailable && styles.disabledButton
+                    loading && styles.authButtonDisabled
                   ]}
                   onPress={handleGoogleSignIn}
                   disabled={loading}
                 >
                   <View style={styles.googleButtonContent}>
                     <Text style={styles.googleIcon}>🔍</Text>
-                    <Text style={[
-                      styles.googleButtonText,
-                      !googleSignInAvailable && styles.disabledButtonText
-                    ]}>
-                      {googleSignInAvailable 
-                        ? 'Continue with Google'
-                        : 'Google Sign-In (Dev Build Only)'
-                      }
+                    <Text style={styles.googleButtonText}>
+                      Continue with Google
                     </Text>
                   </View>
                 </TouchableOpacity>
-
-                {/* Expo Go Notice */}
-                {!googleSignInAvailable && (
-                  <Text style={styles.expoGoNotice}>
-                    📱 Running in Expo Go - Google Sign-In requires a development build
-                  </Text>
-                )}
 
                 {/* Twitter Sign In Button */}
                 <TouchableOpacity

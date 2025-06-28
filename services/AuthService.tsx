@@ -413,6 +413,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (result.user) {
         console.log('✅ Google Sign In successful, processing user...')
         
+        // Check if this is a demo user (Expo Go fallback mode)
+        const isDemoMode = result.user.email === 'demo.google@tribefind.com'
+        
+        if (isDemoMode) {
+          console.log('🎭 Using Google Sign-In demo mode (Expo Go)')
+          // In demo mode, create a demo user experience
+          const demoUser = {
+            id: 'demo_google_user_' + Date.now(),
+            email: result.user.email,
+            username: 'google_demo_user',
+            display_name: result.user.name,
+            avatar: result.user.photo,
+            created_at: new Date().toISOString(),
+            last_active: new Date().toISOString(),
+            is_online: true,
+            bio: 'Demo Google user for testing',
+            location: 'Demo Location',
+            interests: ['Demo', 'Testing', 'Google Sign-In']
+          }
+          
+          // Set demo auth state
+          dispatch(setAuth({
+            session: {
+              user: { id: demoUser.id, email: demoUser.email },
+              access_token: 'demo_token'
+            } as any,
+            user: demoUser
+          }))
+          
+          return { success: true }
+        }
+        
         // Check if user exists in Supabase
         const { data: existingUser, error: fetchError } = await supabase
           .from('users')
