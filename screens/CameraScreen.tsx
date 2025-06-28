@@ -17,12 +17,11 @@ import * as FileSystem from 'expo-file-system'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store'
 import { supabase } from '../lib/supabase'
-import VideoCapture from '../components/VideoCapture'
 import ImageFilters from '../components/ImageFilters'
 
 const { width, height } = Dimensions.get('window')
 
-type CameraMode = 'photo' | 'video'
+type CameraMode = 'photo'
 
 export default function CameraScreen() {
   const [mode, setMode] = useState<CameraMode>('photo')
@@ -32,7 +31,6 @@ export default function CameraScreen() {
   const [mediaLibraryPermission, setMediaLibraryPermission] = useState<MediaLibrary.PermissionResponse | null>(null)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [showVideoCapture, setShowVideoCapture] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [filteredPhotoUri, setFilteredPhotoUri] = useState<string | null>(null)
   const cameraRef = useRef<CameraView>(null)
@@ -91,16 +89,6 @@ export default function CameraScreen() {
       case 'on': return 'flash'
       case 'auto': return 'flash-outline'
       default: return 'flash-off'
-    }
-  }
-
-  const toggleMode = () => {
-    if (mode === 'photo') {
-      setMode('video')
-      setShowVideoCapture(true)
-    } else {
-      setMode('photo')
-      setShowVideoCapture(false)
     }
   }
 
@@ -376,33 +364,6 @@ export default function CameraScreen() {
     setShowFilters(false)
   }
 
-  const handleVideoRecorded = (videoUri: string) => {
-    console.log('Video recorded successfully:', videoUri)
-    setShowVideoCapture(false)
-    setMode('photo')
-  }
-
-  const handleCloseVideoCapture = () => {
-    setShowVideoCapture(false)
-    setMode('photo')
-  }
-
-  // Show video capture modal
-  if (showVideoCapture) {
-    return (
-      <Modal
-        visible={showVideoCapture}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        <VideoCapture
-          onVideoRecorded={handleVideoRecorded}
-          onClose={handleCloseVideoCapture}
-        />
-      </Modal>
-    )
-  }
-
   // Show photo preview if photo was captured
   if (capturedPhoto && !showFilters) {
     return (
@@ -487,14 +448,6 @@ export default function CameraScreen() {
             <Ionicons name="camera" size={20} color={mode === 'photo' ? '#000' : 'white'} />
             <Text style={[styles.modeText, mode === 'photo' && styles.activeModeText]}>Photo</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.modeButton, mode === 'video' && styles.activeModeButton]}
-            onPress={toggleMode}
-          >
-            <Ionicons name="videocam" size={20} color={mode === 'video' ? '#000' : 'white'} />
-            <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>Video</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Bottom Controls */}
@@ -505,7 +458,7 @@ export default function CameraScreen() {
           
           <TouchableOpacity 
             style={styles.captureButton} 
-            onPress={mode === 'photo' ? takePicture : toggleMode}
+            onPress={takePicture}
           >
             <View style={[styles.captureButtonInner, mode === 'video' && styles.videoCaptureButton]}>
               <Ionicons 
