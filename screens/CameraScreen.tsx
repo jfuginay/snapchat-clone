@@ -131,7 +131,7 @@ export default function CameraScreen() {
         })
         try {
           await uploadToSupabase(uriToSave)
-          Alert.alert('Success!', 'Photo saved to gallery and cloud storage', [
+          Alert.alert('📸 Success!', 'Photo saved to your gallery and uploaded to cloud storage! Your tribe can now see your awesome shot.', [
             { text: 'Take Another', onPress: () => {
               setCapturedPhoto(null)
               setFilteredPhotoUri(null)
@@ -149,8 +149,8 @@ export default function CameraScreen() {
           
           if (uploadError.message?.includes('Bucket not found')) {
             Alert.alert(
-              'Setup Required', 
-              'Photo saved locally, but cloud storage needs setup. Please run the storage setup script in Supabase.',
+              '🔧 Setup Required', 
+              'Photo saved locally! Cloud storage needs setup. Run the PRODUCTION_DATABASE_FIX.sql script in your Supabase SQL Editor to enable cloud uploads.',
               [
                 { text: 'Take Another', onPress: () => {
                   setCapturedPhoto(null)
@@ -164,10 +164,10 @@ export default function CameraScreen() {
                 }}
               ]
             )
-          } else if (uploadError.message?.includes('row-level security')) {
+          } else if (uploadError.message?.includes('row-level security') || uploadError.message?.includes('permission')) {
             Alert.alert(
-              'Permission Error', 
-              'Photo saved locally, but cloud upload was blocked. Please check your account permissions.',
+              '🔒 Permission Error', 
+              'Photo saved locally! Cloud upload permissions need fixing. Run the PRODUCTION_DATABASE_FIX.sql script to fix storage policies.',
               [
                 { text: 'Take Another', onPress: () => {
                   setCapturedPhoto(null)
@@ -183,8 +183,8 @@ export default function CameraScreen() {
             )
           } else {
             Alert.alert(
-              'Partial Success', 
-              'Photo saved locally, but cloud backup failed. You can try again later.',
+              '📱 Partial Success', 
+              'Photo saved to your device! Cloud backup failed but you can try uploading again later. Check your internet connection.',
               [
                 { text: 'Take Another', onPress: () => {
                   setCapturedPhoto(null)
