@@ -1,6 +1,6 @@
 // Enhanced Google Places Service for RAG Integration
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || 
-                              process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ||
+const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 
+                              process.env.GOOGLE_PLACES_API_KEY ||
                               'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY';
 
 const PLACES_API_BASE_URL = 'https://maps.googleapis.com/maps/api/place';
@@ -47,6 +47,12 @@ class GooglePlacesService {
 
   constructor() {
     this.apiKey = GOOGLE_PLACES_API_KEY;
+    if (!this.apiKey || this.apiKey === 'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY') {
+      console.warn('⚠️ Google Places API key not properly configured. Using mock data.');
+      console.warn('📝 To fix: Set EXPO_PUBLIC_GOOGLE_PLACES_API_KEY in your environment');
+    } else {
+      console.log('✅ Google Places API key configured');
+    }
   }
 
   async findPlacesForInterests(
@@ -66,9 +72,13 @@ class GooglePlacesService {
       for (const type of placeTypes) {
         if (!searchedTypes.has(type)) {
           searchedTypes.add(type);
-          const places = await this.findNearbyPlaces(latitude, longitude, radius, type);
-          allPlaces.push(...places);
-          await new Promise(resolve => setTimeout(resolve, 100));
+          try {
+            const places = await this.findNearbyPlaces(latitude, longitude, radius, type);
+            allPlaces.push(...places);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            console.error(`Error fetching places for type ${type}:`, error);
+          }
         }
       }
     }
@@ -86,7 +96,9 @@ class GooglePlacesService {
     radius: number,
     type?: string
   ): Promise<EnhancedPlace[]> {
-    if (!this.apiKey) {
+    // Always use mock data in development for now
+    if (!this.apiKey || this.apiKey === 'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY') {
+      console.log('🎭 Using mock places data (API key not configured)');
       return this.getMockPlaces(latitude, longitude, type);
     }
 
@@ -106,12 +118,14 @@ class GooglePlacesService {
 
       if (data.status !== 'OK') {
         console.error('Google Places API Error:', data.error_message || data.status);
+        console.log('📝 Falling back to mock data...');
         return this.getMockPlaces(latitude, longitude, type);
       }
 
       return data.results || [];
     } catch (error) {
       console.error('Failed to fetch from Google Places API:', error);
+      console.log('📝 Falling back to mock data...');
       return this.getMockPlaces(latitude, longitude, type);
     }
   }
@@ -224,7 +238,7 @@ class GooglePlacesService {
   private getMockPlaces(latitude: number, longitude: number, type?: string): EnhancedPlace[] {
     const mockPlaces: EnhancedPlace[] = [
       {
-        place_id: 'mock_1',
+        place_id: 'mock_coffee_1',
         name: 'Local Coffee House',
         formatted_address: '123 Main St, Your City',
         geometry: { location: { lat: latitude + 0.001, lng: longitude + 0.001 } },
@@ -236,7 +250,7 @@ class GooglePlacesService {
         business_status: 'OPERATIONAL'
       },
       {
-        place_id: 'mock_2',
+        place_id: 'mock_gym_1',
         name: 'Fitness Center Plus',
         formatted_address: '456 Oak Ave, Your City',
         geometry: { location: { lat: latitude - 0.002, lng: longitude + 0.002 } },
@@ -248,7 +262,7 @@ class GooglePlacesService {
         business_status: 'OPERATIONAL'
       },
       {
-        place_id: 'mock_3',
+        place_id: 'mock_park_1',
         name: 'Central Park',
         formatted_address: 'Park Ave, Your City',
         geometry: { location: { lat: latitude + 0.003, lng: longitude - 0.001 } },
@@ -256,6 +270,30 @@ class GooglePlacesService {
         rating: 4.7,
         user_ratings_total: 324,
         vicinity: 'City Center',
+        business_status: 'OPERATIONAL'
+      },
+      {
+        place_id: 'mock_restaurant_1',
+        name: 'The Local Bistro',
+        formatted_address: '789 Food St, Your City',
+        geometry: { location: { lat: latitude + 0.0015, lng: longitude - 0.002 } },
+        types: ['restaurant', 'meal_takeaway'],
+        rating: 4.3,
+        user_ratings_total: 203,
+        opening_hours: { open_now: true },
+        vicinity: 'Food District',
+        business_status: 'OPERATIONAL'
+      },
+      {
+        place_id: 'mock_library_1',
+        name: 'City Public Library',
+        formatted_address: '321 Knowledge Ave, Your City',
+        geometry: { location: { lat: latitude - 0.001, lng: longitude - 0.001 } },
+        types: ['library', 'establishment'],
+        rating: 4.6,
+        user_ratings_total: 156,
+        opening_hours: { open_now: true },
+        vicinity: 'Academic Quarter',
         business_status: 'OPERATIONAL'
       }
     ];
@@ -268,7 +306,7 @@ class GooglePlacesService {
   }
 
   isAvailable(): boolean {
-    return !!this.apiKey;
+    return !!this.apiKey && this.apiKey !== 'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY';
   }
 }
 
