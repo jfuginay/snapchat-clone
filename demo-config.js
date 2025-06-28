@@ -1,42 +1,37 @@
-// Demo Configuration for Local Development and Grading
-// Copy this to .env.local for instructor/student testing
+// Demo Configuration for TribeFind
+// This file contains demo credentials and settings for testing
 
 export const DEMO_CONFIG = {
-  // Supabase Configuration (Pre-configured for demo)
-  SUPABASE_URL: 'https://rfvlxtzjtcaxkxisyuys.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmdmx4dHpqdGNheGt4aXN5dXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3Nzg3NDgsImV4cCI6MjA2NjM1NDc0OH0.OrN9YGA5rzcC1mUjxd2maeAUFmnx9VixMgnm_LdLIVM',
+  // Supabase Demo Configuration
+  SUPABASE_URL: 'https://kzwjnbmkjgjdpqgvtbtu.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6d2puYm1ramdqZHBxZ3Z0YnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI5OTc0NjcsImV4cCI6MjA0ODU3MzQ2N30.hWCNUhLxJ6cMHZXLq_-Ll0VVNKCUHSLqMYqZxBaWvSA',
   
   // Google Services
-  GOOGLE_PLACES_API_KEY: 'AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho',
+  GOOGLE_PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '',
   
-  // Demo Accounts (Pre-configured)
-  DEMO_ACCOUNTS: {
-    primary: {
-      email: 'demo@tribefind.app',
-      password: 'DemoUser123!',
-      name: 'Demo User',
-      interests: ['Photography', 'Coffee', 'Hiking', 'Technology', 'Music']
+  // Demo User Accounts
+  DEMO_USERS: [
+    {
+      email: 'demo1@tribefind.app',
+      password: 'demo123456',
+      name: 'Alex Chen',
+      interests: ['Photography', 'Hiking', 'Coffee']
     },
-    test1: {
-      email: 'test1@tribefind.app',
-      password: 'TestUser123!',
-      name: 'Test User One',
-      interests: ['Hiking', 'Photography', 'Coffee', 'Art', 'Travel']
-    },
-    test2: {
-      email: 'test2@tribefind.app',
-      password: 'TestUser123!',
-      name: 'Test User Two',
-      interests: ['Fitness', 'Music', 'Travel', 'Food', 'Sports']
+    {
+      email: 'demo2@tribefind.app', 
+      password: 'demo123456',
+      name: 'Sam Rivera',
+      interests: ['Fitness', 'Music', 'Programming']
     }
-  }
-}
+  ]
+};
 
-// Instructions for .env.local file:
-/*
-Create a .env.local file with:
+// Environment Variables Template for Demo
+export const ENV_TEMPLATE = `
+# TribeFind Demo Environment Variables
+# Copy these to your .env.local file and update with your actual keys
 
-EXPO_PUBLIC_SUPABASE_URL=https://rfvlxtzjtcaxkxisyuys.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmdmx4dHpqdGNheGt4aXN5dXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3Nzg3NDgsImV4cCI6MjA2NjM1NDc0OH0.OrN9YGA5rzcC1mUjxd2maeAUFmnx9VixMgnm_LdLIVM
-GOOGLE_PLACES_API_KEY=AIzaSyBYv5SK3gpQnNaMF9IKu3uIx_V-y2nDLho
-*/ 
+EXPO_PUBLIC_SUPABASE_URL=https://kzwjnbmkjgjdpqgvtbtu.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6d2puYm1ramdqZHBxZ3Z0YnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI5OTc0NjcsImV4cCI6MjA0ODU3MzQ2N30.hWCNUhLxJ6cMHZXLq_-Ll0VVNKCUHSLqMYqZxBaWvSA
+GOOGLE_PLACES_API_KEY=your_google_places_api_key_here
+`; 

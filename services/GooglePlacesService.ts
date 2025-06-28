@@ -1,7 +1,7 @@
 // Enhanced Google Places Service for RAG Integration
 const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 
-                              process.env.GOOGLE_PLACES_API_KEY ||
-                              'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY';
+                              process.env.GOOGLE_PLACES_API_KEY || 
+                              '';
 
 const PLACES_API_BASE_URL = 'https://maps.googleapis.com/maps/api/place';
 
@@ -47,7 +47,7 @@ class GooglePlacesService {
 
   constructor() {
     this.apiKey = GOOGLE_PLACES_API_KEY;
-    if (!this.apiKey || this.apiKey === 'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY') {
+    if (!this.apiKey) {
       console.warn('⚠️ Google Places API key not properly configured. Using mock data.');
       console.warn('📝 To fix: Set EXPO_PUBLIC_GOOGLE_PLACES_API_KEY in your environment');
     } else {
@@ -96,8 +96,8 @@ class GooglePlacesService {
     radius: number,
     type?: string
   ): Promise<EnhancedPlace[]> {
-    // Always use mock data in development for now
-    if (!this.apiKey || this.apiKey === 'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY') {
+    // Use mock data if no API key is configured
+    if (!this.apiKey) {
       console.log('🎭 Using mock places data (API key not configured)');
       return this.getMockPlaces(latitude, longitude, type);
     }
@@ -306,7 +306,7 @@ class GooglePlacesService {
   }
 
   isAvailable(): boolean {
-    return !!this.apiKey && this.apiKey !== 'AIzaSyDzTGzOaQGxnPkRyXqtQgdLwzFPKqZvQVY';
+    return !!this.apiKey;
   }
 }
 
