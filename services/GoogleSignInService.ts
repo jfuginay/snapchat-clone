@@ -1,8 +1,7 @@
 import { Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
-import Constants from 'expo-constants'
 
-// Google Sign-In with proper fallback handling
+// Google Sign-In with real authentication only
 let GoogleSignin: any = null
 let statusCodes: any = null
 
@@ -12,30 +11,8 @@ try {
   statusCodes = googleSignInModule.statusCodes
   console.log('✅ Google Sign-In module loaded successfully')
 } catch (error) {
-  console.log('⚠️ Google Sign-In module not available - this is expected in Expo Go')
-  console.log('   Google Sign-In will work in development builds and production')
-}
-
-// Check if we're in a production environment (TestFlight, App Store, or standalone build)
-const isProductionEnvironment = () => {
-  // Check if we're in Expo Go (has expo client)
-  const isExpoGo = Constants.appOwnership === 'expo'
-  
-  // Check if we're in a standalone build
-  const isStandalone = Constants.appOwnership === 'standalone'
-  
-  // Check if we're in TestFlight or App Store
-  const isTestFlight = Constants.isDevice && !isExpoGo
-  
-  console.log('🔍 Environment detection:', {
-    isExpoGo,
-    isStandalone, 
-    isTestFlight,
-    appOwnership: Constants.appOwnership,
-    isDevice: Constants.isDevice
-  })
-  
-  return isStandalone || isTestFlight
+  console.error('❌ Google Sign-In module not available:', error)
+  console.log('   Make sure @react-native-google-signin/google-signin is installed')
 }
 
 export class GoogleSignInService {
@@ -43,17 +20,8 @@ export class GoogleSignInService {
     try {
       // Check if Google Sign-In is available
       if (!GoogleSignin) {
-        const isProd = isProductionEnvironment()
-        console.log('⚠️ Google Sign-In not available in current environment')
-        console.log('   Available in: Development builds, TestFlight, Production')
-        
-        if (isProd) {
-          console.log('❌ Production environment detected - Google Sign-In should be available!')
-          return false // Don't enable demo mode in production
-        } else {
-          console.log('   Demo mode available for testing in Expo Go')
-          return true // Return true to enable demo mode only in Expo Go
-        }
+        console.error('❌ Google Sign-In module not available')
+        return false
       }
 
       // Production Google OAuth client IDs
@@ -79,32 +47,10 @@ export class GoogleSignInService {
 
   static async signIn() {
     try {
-      const isProd = isProductionEnvironment()
-      
       // Check if Google Sign-In is available
       if (!GoogleSignin || !statusCodes) {
-        if (isProd) {
-          console.error('❌ Google Sign-In not available in production environment!')
-          return { error: 'Google Sign-In is not available. Please restart the app or contact support.' }
-        }
-        
-        console.log('🎭 Google Sign-In not available - using demo mode for Expo Go only')
-        
-        // Create a realistic demo user for testing ONLY in Expo Go
-        const demoUser = {
-          email: `demo.google.${Date.now()}@tribefind.com`,
-          name: 'Google Demo User',
-          photo: 'https://via.placeholder.com/150/4285F4/FFFFFF?text=G',
-          id: 'google_demo_' + Date.now()
-        }
-        
-        console.log('✅ Demo Google Sign-In successful (Expo Go only):', demoUser)
-        
-        return { 
-          googleUser: { user: demoUser },
-          user: demoUser,
-          idToken: 'demo_id_token_' + Date.now()
-        }
+        console.error('❌ Google Sign-In not available')
+        return { error: 'Google Sign-In is not available. Please make sure the app is properly configured.' }
       }
 
       console.log('🔍 Checking Google Play Services availability...')
@@ -122,10 +68,10 @@ export class GoogleSignInService {
         console.log('📱 Continuing (iOS device or Play Services available)')
       }
       
-      console.log('🚀 Starting Real Google Sign In...')
+      console.log('🚀 Starting Google Sign In...')
       const userInfo = await GoogleSignin.signIn()
       
-      console.log('✅ Real Google Sign In successful:', {
+      console.log('✅ Google Sign In successful:', {
         email: userInfo.data?.user?.email,
         name: userInfo.data?.user?.name,
         photo: userInfo.data?.user?.photo,
@@ -208,12 +154,6 @@ export class GoogleSignInService {
 
   // Check if Google Sign-In is available in the current environment
   static isAvailable() {
-    const isProd = isProductionEnvironment()
-    // In production, only return true if GoogleSignin is actually available
-    if (isProd) {
-      return !!GoogleSignin
-    }
-    // In Expo Go, always return true for demo mode
-    return true
+    return !!GoogleSignin
   }
 }
