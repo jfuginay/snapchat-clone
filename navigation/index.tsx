@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store'
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useAuth } from '../services/AuthService'
 
 // Import screens
 import AuthScreen from '../screens/AuthScreen'
@@ -123,13 +124,22 @@ function TribeFindLoadingScreen() {
 
 export default function Navigation() {
   const { isAuthenticated, loading, user } = useAppSelector((state) => state.auth)
+  const { setNavigationRef } = useAuth()
+  const navigationRef = useRef(null)
+
+  // Set up navigation ref for OAuth redirects
+  useEffect(() => {
+    if (navigationRef.current) {
+      setNavigationRef(navigationRef)
+    }
+  }, [setNavigationRef])
 
   if (loading) {
     return <TribeFindLoadingScreen />
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated && user ? (
           // User is authenticated - show main app

@@ -8,6 +8,23 @@ import { TwitterSignInService } from './TwitterSignInService'
 import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
 
+// Navigation helper for OAuth redirects
+let navigationRef: any = null
+
+export const setNavigationRef = (ref: any) => {
+  navigationRef = ref
+}
+
+const navigateToMapAfterOAuth = () => {
+  if (navigationRef?.current) {
+    // Navigate to the Map tab after OAuth authentication
+    navigationRef.current.navigate('Main', { 
+      screen: 'Map',
+      initial: false 
+    })
+  }
+}
+
 interface AuthContextType {
   signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ error?: string }>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
@@ -21,6 +38,7 @@ interface AuthContextType {
   testConnection: () => Promise<boolean>
   linkTwitterAccount: () => Promise<{ error?: string }>
   clearSession: () => Promise<{ error?: string }>
+  setNavigationRef: typeof setNavigationRef
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -302,6 +320,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
               username: newProfile.username
             })
             dispatch(setAuth({ user: newProfile, session }))
+            
+            // Check if this is an OAuth user and redirect to Map
+            if (session.user.user_metadata?.provider === 'google' || session.user.user_metadata?.provider === 'twitter') {
+              console.log('🗺️ OAuth user detected, navigating to Map screen...')
+              setTimeout(() => navigateToMapAfterOAuth(), 500)
+            }
           }
         } else if (error) {
           console.error('❌ Error fetching user profile:', error)
@@ -323,6 +347,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
             .eq('id', userProfile.id)
 
           dispatch(setAuth({ user: userProfile, session }))
+          
+          // Check if this is an OAuth user and redirect to Map
+          if (session.user.user_metadata?.provider === 'google' || session.user.user_metadata?.provider === 'twitter') {
+            console.log('🗺️ OAuth user detected, navigating to Map screen...')
+            setTimeout(() => navigateToMapAfterOAuth(), 500)
+          }
         }
       } catch (error) {
         console.error('❌ Error in auth state change:', error)
@@ -696,6 +726,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
               
               if (signInData?.user && !signInError) {
                 console.log('✅ Successfully signed in existing user')
+                // Manually trigger navigation for existing Google users
+                console.log('🗺️ Google OAuth user signed in, navigating to Map screen...')
+                setTimeout(() => navigateToMapAfterOAuth(), 1000)
               } else {
                 console.error('❌ Failed to sign in existing user:', signInError)
                 return { error: 'Account setup failed. Please try again or contact support.' }
@@ -721,7 +754,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     access_token: 'google-oauth-new-session',
                     refresh_token: 'google-oauth-new-refresh',
                     expires_in: 3600,
-                    token_type: 'bearer'
+                    token_type: 'bearer',
+                    user_metadata: { provider: 'google' }
                   }
                   await handleAuthStateChange(manualSession as any)
                 }
@@ -849,6 +883,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           })
           .eq('id', existingUser.id)
 
+        // Manually trigger navigation for existing Twitter users
+        console.log('🗺️ Existing Twitter user updated, navigating to Map screen...')
+        setTimeout(() => navigateToMapAfterOAuth(), 1000)
+        
         return {}
       }
 
@@ -979,6 +1017,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
               .eq('id', authData.user.id)
             
             console.log('✅ Twitter user profile updated successfully')
+            
+            // Manually trigger navigation for existing Twitter users
+            console.log('🗺️ Existing Twitter user updated, navigating to Map screen...')
+            setTimeout(() => navigateToMapAfterOAuth(), 1000)
+            
             return {}
           } else {
             console.error('❌ Failed to fetch existing profile after duplicate error')
@@ -990,6 +1033,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       console.log('✅ Twitter user created successfully')
+      
+      // Manually trigger navigation for new Twitter users
+      console.log('🗺️ New Twitter user created, navigating to Map screen...')
+      setTimeout(() => navigateToMapAfterOAuth(), 1000)
+      
       return {}
 
     } catch (error) {
@@ -1313,6 +1361,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     testConnection,
     linkTwitterAccount,
     clearSession,
+    setNavigationRef,
   }
 
   return (
