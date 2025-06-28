@@ -62,11 +62,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const handleDeepLink = (event: { url: string }) => {
       console.log('🔗 Deep link received:', event.url)
       
-      if (event.url.includes('/auth/callback')) {
-        console.log('🔄 Processing OAuth callback...')
+      // Handle different OAuth callback patterns
+      if (event.url.includes('/auth/callback') || event.url.includes('/auth/twitter') || event.url.includes('tribefind://auth')) {
+        console.log('🔄 Processing OAuth callback...', { url: event.url })
         
-        // For Twitter OAuth, the session should be created automatically by Supabase
-        // We just need to trigger a session refresh
+        // For Twitter OAuth, extract the code and handle manually
+        if (event.url.includes('/auth/twitter') || event.url.includes('tribefind://auth/twitter')) {
+          console.log('🐦 Twitter OAuth callback detected')
+          // Twitter callback is handled by TwitterSignInService directly
+          // No additional processing needed here
+          return
+        }
+        
+        // For other OAuth providers (Google, etc.), refresh session
         setTimeout(async () => {
           try {
             const { data: { session }, error } = await supabase.auth.getSession()
@@ -740,12 +748,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signInWithTwitter = async () => {
     try {
       console.log('🐦 Starting native Twitter Sign In...')
+      console.log('🔍 Ensuring clean authentication state for Twitter...')
       dispatch(setLoading(true))
 
       // Test connection first
       const isConnected = await testSupabaseConnection()
       if (!isConnected) {
         return { error: 'Cannot connect to server. Please check your internet connection.' }
+      }
+
+      // Clear any existing auth sessions to prevent conflicts
+      console.log('🧹 Clearing any existing authentication state...')
+      try {
+        // Sign out any existing sessions to ensure clean state
+        await supabase.auth.signOut()
+      } catch (clearError) {
+        console.log('⚠️ Could not clear existing session (this is usually fine):', clearError)
       }
 
       // Configure Twitter Sign In Service

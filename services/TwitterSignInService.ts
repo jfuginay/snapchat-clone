@@ -86,6 +86,7 @@ export class TwitterSignInService {
   static async signIn(): Promise<TwitterSignInResult> {
     try {
       console.log('🐦 Starting native Twitter Sign In with PKCE...')
+      console.log('🔍 Current environment check - ensuring clean state...')
 
       if (!this.clientId) {
         return {
@@ -93,6 +94,10 @@ export class TwitterSignInService {
           error: 'Twitter Sign In is not configured. Please check your Client ID.'
         }
       }
+
+      // Clear any existing browser sessions to prevent conflicts
+      console.log('🧹 Clearing any existing browser state...')
+      await WebBrowser.dismissBrowser()
 
       // Generate PKCE challenge for secure mobile OAuth
       const { codeVerifier, codeChallenge } = await this.generateCodeChallenge()
@@ -122,8 +127,10 @@ export class TwitterSignInService {
       }).toString()}`
 
       console.log('🔗 Opening Twitter OAuth with PKCE...')
+      console.log('📱 Redirect URI:', this.redirectUri)
+      console.log('🎯 Expected callback pattern: tribefind://auth/twitter')
 
-      // Open Twitter OAuth in secure in-app browser
+      // Open Twitter OAuth in secure in-app browser with enhanced configuration
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
         this.redirectUri,
@@ -132,19 +139,42 @@ export class TwitterSignInService {
           toolbarColor: '#1DA1F2', // Twitter blue
           secondaryToolbarColor: '#ffffff',
           enableBarCollapsing: true,
-          showInRecents: false
+          showInRecents: false,
+          // Enhanced browser configuration to prevent conflicts
+          dismissButtonStyle: 'close',
+          readerMode: false,
+          // Ensure we stay in the Twitter flow
+          createTask: false
         }
       )
 
-      if (result.type === 'success' && result.url) {
+      console.log('📊 Twitter OAuth result:', {
+        type: result.type,
+        hasUrl: !!(result as any).url,
+        url: (result as any).url ? ((result as any).url as string).substring(0, 100) + '...' : 'none'
+      })
+
+      if (result.type === 'success' && (result as any).url) {
         console.log('✅ Twitter OAuth completed, processing callback...')
+        console.log('🔍 Full callback URL:', (result as any).url)
         
         // Extract authorization code from callback URL
-        const url = new URL(result.url)
+        const url = new URL((result as any).url)
         const code = url.searchParams.get('code')
         const returnedState = url.searchParams.get('state')
+        const error = url.searchParams.get('error')
+
+        if (error) {
+          console.error('❌ Twitter OAuth error in callback:', error)
+          return {
+            success: false,
+            error: `Twitter authorization failed: ${error}`
+          }
+        }
 
         if (!code) {
+          console.error('❌ No authorization code in callback URL')
+          console.log('🔍 URL search params:', Array.from(url.searchParams.entries()))
           return {
             success: false,
             error: 'Authorization code not received from Twitter'
@@ -152,11 +182,16 @@ export class TwitterSignInService {
         }
 
         if (returnedState !== state) {
+          console.error('❌ State mismatch - security issue detected')
+          console.log('🔍 Expected state:', state)
+          console.log('🔍 Received state:', returnedState)
           return {
             success: false,
             error: 'Invalid state parameter - possible security issue'
           }
         }
+
+        console.log('✅ Authorization code and state verified')
 
         // Exchange authorization code for access token
         const tokenResponse = await this.exchangeCodeForToken(code, codeVerifier)
@@ -178,11 +213,19 @@ export class TwitterSignInService {
         }
 
       } else if (result.type === 'cancel') {
+        console.log('⚠️ User cancelled Twitter authentication')
         return {
           success: false,
           error: 'User cancelled Twitter authentication'
         }
+      } else if (result.type === 'dismiss') {
+        console.log('⚠️ Twitter authentication was dismissed')
+        return {
+          success: false,
+          error: 'Twitter authentication was dismissed'
+        }
       } else {
+        console.error('❌ Unexpected Twitter OAuth result:', result)
         return {
           success: false,
           error: 'Twitter authentication was interrupted'

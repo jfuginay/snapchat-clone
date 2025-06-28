@@ -81,13 +81,22 @@ export default function AuthScreen() {
   }
 
   const handleTwitterSignIn = async () => {
+    console.log('🐦 Twitter Sign-In button clicked - starting authentication flow...')
+    console.log('🔍 Expected flow: Twitter button -> Twitter OAuth -> Twitter API -> App dashboard')
+    
     setLoading(true)
     try {
+      console.log('📱 Calling signInWithTwitter() function...')
       const result = await signInWithTwitter()
+      
       if (result.error) {
+        console.error('❌ Twitter Sign-In failed with error:', result.error)
         Alert.alert('Twitter Sign In Error', result.error)
+      } else {
+        console.log('✅ Twitter Sign-In completed successfully!')
       }
     } catch (error) {
+      console.error('❌ Unexpected Twitter Sign-In error:', error)
       Alert.alert('Error', 'An unexpected error occurred with Twitter Sign In')
     } finally {
       setLoading(false)
