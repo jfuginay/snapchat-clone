@@ -123,25 +123,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // User doesn't exist, create profile for new signup
           console.log('🆕 User profile not found - creating new profile')
           
-          // Generate username and display name from email
-          const emailUsername = session.user.email?.split('@')[0] || 'user'
-          const timestamp = Date.now().toString().slice(-4) // Last 4 digits of timestamp
-          const autoUsername = `${emailUsername}_${timestamp}`
-          const autoDisplayName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1)
+          // Generate a unique username
+          let baseUsername = session.user.user_metadata?.username || 
+                           session.user.user_metadata?.name?.toLowerCase().replace(/\s+/g, '_') ||
+                           session.user.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') ||
+                           'user'
           
-          console.log('🆕 Creating new user profile...', {
-            userId: session.user.id,
-            email: session.user.email,
-            metadata: session.user.user_metadata
-          })
+          // Ensure username is unique by checking database and adding suffix if needed
+          let username = baseUsername
+          let usernameAttempt = 0
+          let usernameExists = true
+          
+          while (usernameExists && usernameAttempt < 10) {
+            const { data: existingUsername } = await supabase
+              .from('users')
+              .select('username')
+              .eq('username', username)
+              .maybeSingle()
+            
+            if (!existingUsername) {
+              usernameExists = false
+            } else {
+              usernameAttempt++
+              username = `${baseUsername}_${usernameAttempt}`
+            }
+          }
+          
+          // If still not unique after 10 attempts, use timestamp
+          if (usernameExists) {
+            username = `${baseUsername}_${Date.now()}`
+          }
 
           // Create profile data from auth session
           const profileData = {
             id: session.user.id,
             email: session.user.email || '',
-            username: session.user.user_metadata?.username || 
-                     session.user.user_metadata?.name?.toLowerCase().replace(/\s+/g, '_') ||
-                     `user_${session.user.id.substring(0, 8)}`,
+            username: username,
             display_name: session.user.user_metadata?.display_name || 
                          session.user.user_metadata?.name || 
                          'User',
@@ -173,6 +190,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
           }
 
+          console.log('💾 Attempting to create profile with unique username:', {
+            userId: profileData.id,
+            email: profileData.email,
+            username: profileData.username
+          })
+
           // Try to insert new profile with proper error handling
           const { data: newProfile, error: createError } = await supabase
             .from('users')
@@ -187,19 +210,65 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (createError.code === '23505') {
               console.log('🔄 Profile already exists, fetching and updating existing profile...')
               
-              // First try to fetch by ID
-              let existingProfile = null
-              const { data: profileById, error: fetchByIdError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle()
-              
-              if (!fetchByIdError && profileById) {
-                existingProfile = profileById
-                console.log('✅ Found existing profile by ID')
+              // Check if it's a duplicate ID or username
+              if (createError.message.includes('users_pkey')) {
+                console.log('🔍 Duplicate ID error - fetching existing profile by ID')
+                const { data: existingProfile, error: fetchError } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .single()
+                
+                if (!fetchError && existingProfile) {
+                  console.log('✅ Found existing profile by ID, updating it')
+                  const { data: updatedProfile, error: updateError } = await supabase
+                    .from('users')
+                    .update({
+                      display_name: profileData.display_name || existingProfile.display_name,
+                      avatar: profileData.avatar || existingProfile.avatar,
+                      last_active: new Date().toISOString(),
+                      is_online: true
+                    })
+                    .eq('id', session.user.id)
+                    .select()
+                    .single()
+                  
+                  if (!updateError && updatedProfile) {
+                    console.log('✅ Existing profile updated successfully')
+                    dispatch(setAuth({ user: updatedProfile, session }))
+                  } else {
+                    console.log('✅ Using existing profile as-is')
+                    dispatch(setAuth({ user: existingProfile, session }))
+                  }
+                } else {
+                  console.log('⚠️ Could not find existing profile by ID')
+                  dispatch(setAuth({ user: null, session }))
+                }
+              } else if (createError.message.includes('users_username_key')) {
+                console.log('🔍 Duplicate username error - generating new unique username')
+                
+                // Generate a new unique username with timestamp
+                const newUsername = `${baseUsername}_${Date.now()}`
+                const updatedProfileData = { ...profileData, username: newUsername }
+                
+                console.log('🔄 Retrying profile creation with new username:', newUsername)
+                
+                const { data: retryProfile, error: retryError } = await supabase
+                  .from('users')
+                  .insert(updatedProfileData)
+                  .select()
+                  .single()
+                
+                if (!retryError && retryProfile) {
+                  console.log('✅ Profile created successfully with new username')
+                  dispatch(setAuth({ user: retryProfile, session }))
+                } else {
+                  console.error('❌ Failed to create profile even with new username:', retryError)
+                  dispatch(setAuth({ user: null, session }))
+                }
               } else {
-                // Try to fetch by email as fallback
+                console.log('🔍 Other duplicate key error - trying general fallback')
+                // Try to find existing profile by email
                 const { data: profileByEmail, error: fetchByEmailError } = await supabase
                   .from('users')
                   .select('*')
@@ -207,44 +276,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
                   .maybeSingle()
                 
                 if (!fetchByEmailError && profileByEmail) {
-                  existingProfile = profileByEmail
                   console.log('✅ Found existing profile by email')
-                  
-                  // Update the profile ID to match the session user ID
-                  if (profileByEmail.id !== session.user.id) {
-                    console.log('🔄 Updating profile ID to match session user...')
-                    await supabase
-                      .from('users')
-                      .update({ id: session.user.id })
-                      .eq('id', profileByEmail.id)
-                  }
-                }
-              }
-              
-              if (existingProfile) {
-                // Update with latest session data
-                const { data: updatedProfile, error: updateError } = await supabase
-                  .from('users')
-                  .update({
-                    display_name: profileData.display_name || existingProfile.display_name,
-                    avatar: profileData.avatar || existingProfile.avatar,
-                    last_active: new Date().toISOString(),
-                    is_online: true
-                  })
-                  .eq('id', session.user.id)
-                  .select()
-                  .single()
-                
-                if (!updateError && updatedProfile) {
-                  console.log('✅ Existing profile updated successfully')
-                  dispatch(setAuth({ user: updatedProfile, session }))
+                  dispatch(setAuth({ user: profileByEmail, session }))
                 } else {
-                  console.log('✅ Using existing profile as-is')
-                  dispatch(setAuth({ user: existingProfile, session }))
+                  console.log('⚠️ Could not find or create profile, proceeding with session only')
+                  dispatch(setAuth({ user: null, session }))
                 }
-              } else {
-                console.log('⚠️ Could not find or create profile, proceeding with session only')
-                dispatch(setAuth({ user: null, session }))
               }
             } else {
               console.log('⚠️ Profile creation failed with non-duplicate error, proceeding with session only')
