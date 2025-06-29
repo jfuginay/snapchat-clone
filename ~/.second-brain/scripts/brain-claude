@@ -1,0 +1,444 @@
+#!/bin/bash
+
+# Enhanced Second Brain with Claude Integration
+BRAIN_DIR="$HOME/.second-brain"
+DATE=$(date '+%Y-%m-%d')
+TIME=$(date '+%H:%M:%S')
+DATETIME=$(date -Iseconds)
+TEMPLATES_DIR="$BRAIN_DIR/templates"
+
+# Check if Claude is available
+check_claude() {
+    if ! command -v claude-code &> /dev/null; then
+        echo "❌ Claude CLI not found. Please install claude-code first."
+        return 1
+    fi
+    return 0
+}
+
+# Enhanced task logging with Claude analysis
+log_task_with_analysis() {
+    local task_id="$1"
+    local progress="$2"
+    local analyze="${3:-true}"
+    
+    # Get task details from taskmaster if available
+    local task_details=""
+    if command -v task-master &> /dev/null; then
+        task_details=$(task-master show "$task_id" 2>/dev/null || echo "Task details not available")
+    else
+        task_details="Task ID: $task_id"
+    fi
+    
+    # Create detailed progress log
+    local log_file="$BRAIN_DIR/progress/tasks/task-$task_id-$DATE.md"
+    
+    cat > "$log_file" << EOL
+# Task Progress: $task_id
+
+**Date:** $DATE $TIME
+**Task ID:** $task_id
+**Status:** In Progress
+
+## Task Details
+\`\`\`
+$task_details
+\`\`\`
+
+## Progress Update
+$progress
+
+## Timeline
+- $DATETIME: $progress
+
+EOL
+
+    if [[ "$analyze" == "true" ]] && check_claude; then
+        echo "🤖 Analyzing progress with Claude..."
+        
+        # Create analysis prompt
+        local prompt="Analyze this task progress and provide strategic guidance:
+
+**Task Context**: $task_details
+
+**Current Progress**: $progress
+
+Please provide:
+1. **Progress Assessment**: How much work is likely complete?
+2. **Next Steps**: Specific actions to take next
+3. **Potential Issues**: What could go wrong or block progress?
+4. **Optimization**: How could this be done better/faster?
+5. **Dependencies**: What else might need to be done first?
+6. **Time Estimation**: Realistic time to completion
+
+Be specific and actionable."
+
+        # Get Claude analysis
+        local analysis=$(echo "$prompt" | claude-code --no-stream 2>/dev/null || echo "Analysis failed")
+        
+        # Append analysis to log
+        cat >> "$log_file" << EOL
+
+## AI Analysis
+$analysis
+
+## Action Items
+- [ ] Review AI recommendations
+- [ ] Update task if needed
+- [ ] Plan next steps
+
+---
+*Enhanced by Claude AI*
+EOL
+    fi
+    
+    # Also log to daily progress
+    echo "[$DATETIME] Task $task_id: $progress" >> "$BRAIN_DIR/progress/daily-$DATE.md"
+    
+    echo "✅ Task progress logged and analyzed: $task_id"
+    if [[ -f "$log_file" ]]; then
+        echo "📄 Full log: $log_file"
+    fi
+}
+
+# Generate intelligent daily review
+generate_daily_review() {
+    echo "🧠 Generating AI-powered daily review..."
+    
+    local progress_file="$BRAIN_DIR/progress/daily-$DATE.md"
+    local review_file="$BRAIN_DIR/knowledge/daily/review-$DATE.md"
+    
+    if [[ ! -f "$progress_file" ]]; then
+        echo "❌ No progress logged today. Run 'brain log' to add some progress first."
+        return 1
+    fi
+    
+    if ! check_claude; then
+        return 1
+    fi
+    
+    # Collect additional context
+    local task_context=""
+    if command -v task-master &> /dev/null; then
+        task_context=$(task-master list 2>/dev/null | head -10 || echo "No task context available")
+    fi
+    
+    # Create comprehensive review prompt
+    local prompt="Analyze this daily progress and provide comprehensive insights:
+
+## Today's Progress Log
+$(cat "$progress_file")
+
+## Task Master Context
+$task_context
+
+Please provide:
+
+1. **Key Accomplishments**: What was achieved today?
+2. **Progress Patterns**: Any recurring themes or approaches?
+3. **Productivity Analysis**: What worked well vs what didn't?
+4. **Blockers & Challenges**: Issues that slowed progress
+5. **Knowledge Gained**: New insights or learnings
+6. **Tomorrow's Priorities**: Top 3 focus areas for tomorrow
+7. **Process Improvements**: Better workflows or tools to consider
+8. **Energy & Flow States**: When was I most/least productive?
+
+Format as actionable insights with specific recommendations."
+
+    # Generate review with Claude
+    echo "🤖 Claude is analyzing your day..."
+    local analysis=$(echo "$prompt" | claude-code --no-stream 2>/dev/null || echo "Review generation failed")
+    
+    # Create comprehensive review
+    cat > "$review_file" << EOL
+# Daily Review - $DATE
+
+**Generated:** $DATETIME
+**Review Type:** AI-Enhanced Daily Reflection
+
+## Today's Raw Progress
+$(cat "$progress_file")
+
+## AI Analysis & Insights
+$analysis
+
+## Personal Reflection
+*Add your own thoughts here*
+
+## Tomorrow's Plan
+- [ ] Priority 1
+- [ ] Priority 2  
+- [ ] Priority 3
+
+## Learning Notes
+- 
+
+## Gratitude
+- 
+
+---
+*Enhanced by Claude AI + Second Brain*
+EOL
+    
+    echo "✅ Daily review generated: $review_file"
+    echo "📖 Open it to add personal reflections!"
+}
+
+# Weekly retrospective with Claude
+generate_weekly_review() {
+    echo "🧠 Generating weekly retrospective..."
+    
+    if ! check_claude; then
+        return 1
+    fi
+    
+    local week_start=$(date -d "last monday" '+%Y-%m-%d' 2>/dev/null || date -v-1w -v+1d '+%Y-%m-%d')
+    local week_files=$(find "$BRAIN_DIR/progress" -name "daily-*.md" -newer "$BRAIN_DIR/progress/daily-$week_start.md" 2>/dev/null | sort)
+    
+    if [[ -z "$week_files" ]]; then
+        echo "❌ No progress logs found for this week"
+        return 1
+    fi
+    
+    echo "🤖 Analyzing week's progress with Claude..."
+    
+    # Combine week's progress
+    local week_progress=""
+    for file in $week_files; do
+        local day=$(basename "$file" .md | sed 's/daily-//')
+        week_progress="$week_progress
+
+## $day
+$(cat "$file")
+"
+    done
+    
+    # Generate analysis
+    local prompt="Conduct a comprehensive weekly retrospective:
+
+## Week's Progress Data
+$week_progress
+
+Analyze and provide:
+
+1. **Weekly Highlights**: Top accomplishments and breakthroughs
+2. **Productivity Patterns**: When and how I work best
+3. **Challenge Analysis**: Recurring blockers and how to address them
+4. **Learning Trajectory**: Skills developed and knowledge gained
+5. **Goal Progress**: How well did I advance my objectives?
+6. **Time Allocation**: Where time was spent and if it aligns with priorities
+7. **Next Week Strategy**: Key focus areas and process improvements
+8. **Long-term Insights**: Patterns that affect bigger goals
+
+Provide specific, actionable recommendations for improvement."
+
+    local analysis=$(echo "$prompt" | claude-code --no-stream 2>/dev/null || echo "Weekly analysis failed")
+    
+    # Create weekly review
+    local weekly_file="$BRAIN_DIR/knowledge/weekly/review-week-of-$week_start.md"
+    mkdir -p "$(dirname "$weekly_file")"
+    
+    cat > "$weekly_file" << EOL
+# Weekly Review - Week of $week_start
+
+**Generated:** $DATETIME
+**Review Type:** AI-Enhanced Weekly Retrospective
+
+## Week's Progress Summary
+$week_progress
+
+## AI Strategic Analysis
+$analysis
+
+## Personal Reflection
+*Add your own insights here*
+
+## Key Learnings This Week
+- 
+
+## Wins & Celebrations
+- 
+
+## Areas for Improvement
+- 
+
+## Next Week's Focus
+- [ ] Priority 1
+- [ ] Priority 2
+- [ ] Priority 3
+
+---
+*Enhanced by Claude AI + Second Brain*
+EOL
+    
+    echo "✅ Weekly review generated: $weekly_file"
+}
+
+# Project insights with Claude
+analyze_project() {
+    local project="$1"
+    
+    if [[ -z "$project" ]]; then
+        echo "❌ Please specify a project name"
+        return 1
+    fi
+    
+    if ! check_claude; then
+        return 1
+    fi
+    
+    echo "🧠 Analyzing project: $project"
+    
+    # Gather project data
+    local project_dir="$BRAIN_DIR/projects/$project"
+    local progress_files=$(find "$BRAIN_DIR/progress" -name "*$project*" -o -name "task-*" | head -20)
+    
+    if [[ ! -d "$project_dir" ]]; then
+        echo "❌ Project not found. Initialize with: brain init $project"
+        return 1
+    fi
+    
+    # Collect project context
+    local project_data=""
+    if [[ -n "$progress_files" ]]; then
+        for file in $progress_files; do
+            project_data="$project_data
+
+$(basename "$file"):
+$(cat "$file" | head -20)
+---
+"
+        done
+    fi
+    
+    # Get Task Master context
+    local task_context=""
+    if command -v task-master &> /dev/null; then
+        task_context=$(task-master list 2>/dev/null || echo "No tasks available")
+    fi
+    
+    local prompt="Analyze this project and provide strategic insights:
+
+**Project**: $project
+
+## Progress Data
+$project_data
+
+## Task Context  
+$task_context
+
+Provide comprehensive analysis:
+
+1. **Project Health**: Overall status and trajectory
+2. **Momentum Analysis**: What's driving progress vs what's blocking it
+3. **Risk Assessment**: Potential issues and mitigation strategies
+4. **Resource Allocation**: Time and effort distribution
+5. **Skill Development**: Capabilities being built through this project
+6. **Strategic Recommendations**: How to accelerate progress
+7. **Success Metrics**: How to measure if project is succeeding
+8. **Next Phase Planning**: What should happen after current work
+
+Focus on actionable insights for project success."
+
+    echo "🤖 Claude is analyzing the project..."
+    local analysis=$(echo "$prompt" | claude-code --no-stream 2>/dev/null || echo "Project analysis failed")
+    
+    # Create project analysis
+    local analysis_file="$project_dir/analysis-$DATE.md"
+    
+    cat > "$analysis_file" << EOL
+# Project Analysis: $project
+
+**Date:** $DATE
+**Analysis Type:** AI-Enhanced Strategic Review
+
+## AI Strategic Analysis
+$analysis
+
+## Personal Notes
+*Add your own insights here*
+
+## Action Items
+- [ ] Review AI recommendations
+- [ ] Update project priorities
+- [ ] Adjust timeline if needed
+
+## Decision Points
+- 
+
+---
+*Enhanced by Claude AI + Second Brain*
+EOL
+    
+    echo "✅ Project analysis complete: $analysis_file"
+}
+
+# Main command handler
+case "$1" in
+    "claude-task")
+        log_task_with_analysis "$2" "$3" true
+        ;;
+    "claude-review")
+        generate_daily_review
+        ;;
+    "claude-weekly")
+        generate_weekly_review
+        ;;
+    "claude-project")
+        analyze_project "$2"
+        ;;
+    "smart-log")
+        # Quick log with optional Claude enhancement
+        message="$2"
+        enhance="${3:-false}"
+        
+        echo "[$DATETIME] $message" >> "$BRAIN_DIR/progress/daily-$DATE.md"
+        
+        if [[ "$enhance" == "true" ]] && check_claude; then
+            echo "🤖 Enhancing log entry..."
+            local prompt="Enhance this progress log entry with context and insights:
+
+\"$message\"
+
+Provide:
+1. What this might indicate about the work
+2. Potential next steps
+3. Any patterns or insights
+4. Questions to consider
+
+Keep it brief but insightful."
+            
+            local enhancement=$(echo "$prompt" | claude-code --no-stream 2>/dev/null || echo "Enhancement failed")
+            
+            cat >> "$BRAIN_DIR/progress/daily-$DATE.md" << EOL
+
+## AI Enhancement for: "$message"
+$enhancement
+
+---
+EOL
+        fi
+        
+        echo "✅ Smart log entry created"
+        ;;
+    "help"|*)
+        echo "🧠 Second Brain with Claude AI Integration"
+        echo "========================================"
+        echo ""
+        echo "Enhanced Commands:"
+        echo "  brain-claude claude-task <id> \"progress\"    - Task analysis with AI"
+        echo "  brain-claude claude-review                  - AI-powered daily review"
+        echo "  brain-claude claude-weekly                  - Weekly retrospective"
+        echo "  brain-claude claude-project <name>         - Project analysis"
+        echo "  brain-claude smart-log \"message\" [true]    - Enhanced logging"
+        echo ""
+        echo "Examples:"
+        echo "  brain-claude claude-task 5.2 \"Fixed auth bug, needs testing\""
+        echo "  brain-claude claude-review"
+        echo "  brain-claude claude-weekly" 
+        echo "  brain-claude claude-project tribefind"
+        echo "  brain-claude smart-log \"Great breakthrough on AI integration\" true"
+        echo ""
+        echo "Regular brain commands also available via 'brain' command"
+        ;;
+esac 

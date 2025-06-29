@@ -7,6 +7,7 @@ import { useAppSelector } from '../store'
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth } from '../services/AuthService'
+import TribeFindLogo from '../components/TribeFindLogo'
 
 // Import screens
 import AuthScreen from '../screens/AuthScreen'
@@ -98,30 +99,28 @@ function TabNavigator() {
 function TribeFindLoadingScreen() {
   return (
     <LinearGradient
-      colors={['#1e1b4b', '#312e81', '#6366f1']}
+      colors={['#1a2f1a', '#2d5f3f', '#4a7c59', '#6366f1']}
       style={styles.loadingContainer}
     >
       <View style={styles.logoContainer}>
-        {/* TribeFind Logo/Icon */}
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoIcon}>🎯</Text>
-        </View>
+        {/* TribeFIND Logo */}
+        <TribeFindLogo size={140} style={styles.logo} />
         
         {/* Brand Name */}
-        <Text style={styles.brandName}>TribeFind</Text>
-        <Text style={styles.brandTagline}>Find Your Tribe Through Shared Interests</Text>
+        <Text style={styles.brandName}>TribeFIND</Text>
+        <Text style={styles.brandTagline}>Find Interests • Nurture Discovery</Text>
       </View>
 
       {/* Loading Indicator */}
       <View style={styles.loadingIndicator}>
-        <ActivityIndicator size="large" color="#a855f7" />
-        <Text style={styles.loadingText}>Loading your tribe...</Text>
+        <ActivityIndicator size="large" color="#a78bfa" />
+        <Text style={styles.loadingText}>Connecting to your network...</Text>
       </View>
 
       {/* Bottom Branding */}
       <View style={styles.bottomBranding}>
-        <Text style={styles.poweredBy}>Built with AI-First Principles</Text>
-        <Text style={styles.engineeringBy}>EnginDearing.soy</Text>
+        <Text style={styles.poweredBy}>AI-Powered Social Discovery</Text>
+        <Text style={styles.engineeringBy}>Built with ❤️ by EnginDearing</Text>
       </View>
     </LinearGradient>
   )
@@ -259,25 +258,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(168, 85, 247, 0.2)',
-    borderWidth: 3,
-    borderColor: '#a855f7',
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
     marginBottom: 30,
-    shadowColor: '#a855f7',
+    shadowColor: '#6366f1',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
     elevation: 10,
-  },
-  logoIcon: {
-    fontSize: 50,
-    textAlign: 'center',
   },
   brandName: {
     fontSize: 36,

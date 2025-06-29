@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Share,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { 
@@ -20,12 +23,16 @@ import {
   setUpgradePrompt,
   incrementUsage,
 } from '../store/subscriptionSlice';
+import { aiService } from '../services/AIService';
+import TribeFindLogo from './TribeFindLogo';
 
 interface Message {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: Date;
+  hasActivitySuggestion?: boolean;
+  activityData?: any;
 }
 
 interface AIChatBotProps {
@@ -47,117 +54,43 @@ export const AIChatBot: React.FC<AIChatBotProps> = ({
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hey ${userName}! 👋 I'm your TribeFind AI assistant. I can help you find people with shared interests, suggest activities, or just chat about your hobbies!`,
+      text: `🌟 Greetings, ${userName}! I'm Engie, your wise AI companion on TribeFIND. "The unexamined life is not worth living" - Socrates. 
+
+What brings you here today? Are you seeking new connections, activity ideas, or perhaps some philosophical guidance? I'm here to help you find your tribe! 🤔✨`,
       isUser: false,
       timestamp: new Date(),
-    }
+    },
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Free AI API options (replace with your chosen service)
-  const callFreeAI = async (prompt: string): Promise<string> => {
-    try {
-      // Option 1: Local Ollama server
-      const ollamaResponse = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llama3.2:3b', // Lightweight model for mobile
-          prompt: `You are a helpful AI assistant for TribeFind, a social discovery app. User interests: ${userInterests.join(', ')}. ${prompt}`,
-          stream: false,
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { currentLocation } = useSelector((state: RootState) => state.location);
+
+  // Engie pulse animation
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 2000,
+          useNativeDriver: true,
         }),
-      });
-      
-      if (ollamaResponse.ok) {
-        const data = await ollamaResponse.json();
-        return data.response;
-      }
-
-      // Option 2: Fallback to Hugging Face Inference API (free tier)
-      const hfResponse = await fetch(
-        'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          method: 'POST',
-          body: JSON.stringify({
-            inputs: {
-              past_user_inputs: messages.filter(m => m.isUser).slice(-3).map(m => m.text),
-              generated_responses: messages.filter(m => !m.isUser).slice(-3).map(m => m.text),
-              text: prompt,
-            },
-          }),
-        }
-      );
-
-      if (hfResponse.ok) {
-        const data = await hfResponse.json();
-        return data.generated_text || "I'm here to help you connect with your tribe! 🌟";
-      }
-
-      // Option 3: Simple rule-based responses (always works)
-      return generateRuleBasedResponse(prompt, userInterests);
-      
-    } catch (error) {
-      console.error('AI API Error:', error);
-      return generateRuleBasedResponse(prompt, userInterests);
-    }
-  };
-
-  const generateRuleBasedResponse = (prompt: string, interests: string[]): string => {
-    const lowerPrompt = prompt.toLowerCase();
-    
-    // Interest-based responses
-    if (lowerPrompt.includes('find') || lowerPrompt.includes('people')) {
-      const randomInterest = interests[Math.floor(Math.random() * interests.length)];
-      return `I can help you find people nearby who love ${randomInterest || 'similar things'}! Try checking the map view to see tribe members in your area. 📍`;
-    }
-    
-    if (lowerPrompt.includes('activity') || lowerPrompt.includes('do')) {
-      return `Based on your interests, I suggest checking out local events or starting a chat with someone who shares your hobbies! The camera feature is great for sharing moments too 📸`;
-    }
-    
-    if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
-      return `Hello! Welcome to TribeFind! I'm here to help you discover your tribe. What are you interested in exploring today? 🎉`;
-    }
-    
-    // Default encouraging response
-    const responses = [
-      "That's interesting! TribeFind is all about connecting people with shared passions. Have you explored the map feature yet?",
-      "I love helping people find their tribe! What interests would you like to explore with others?",
-      "Great question! The best way to connect is through shared interests. What's your favorite hobby?",
-      "TribeFind is perfect for that! Try using the camera to share your experiences or browse nearby tribe members.",
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, []);
 
   const sendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
-
-    // Check subscription limits before sending
-    if (!canSendMessage) {
-      Alert.alert(
-        '🚀 Upgrade Your AI Assistant',
-        `You've reached your daily limit of ${currentPlan.limits.dailyAIMessages} messages. Upgrade to get more AI power!`,
-        [
-          { text: 'Maybe Later', style: 'cancel' },
-          { 
-            text: 'Upgrade Now', 
-            onPress: () => {
-              dispatch(setUpgradePrompt(true));
-              // Navigate to subscription screen - you'll need to pass navigation prop
-              // navigation.navigate('SubscriptionScreen', { upgradePrompt: true });
-            }
-          },
-        ]
-      );
-      return;
-    }
+    if (!inputText.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -170,19 +103,34 @@ export const AIChatBot: React.FC<AIChatBotProps> = ({
     setInputText('');
     setIsLoading(true);
 
-    // Scroll to bottom
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-
     try {
-      const aiResponse = await callFreeAI(userMessage.text);
-      
+      // Check if this is an activity request
+      const isActivityRequest = /bored|activity|activities|do|time|hours|hrs|suggestions|recommend|ideas|plans|what can|what should/i.test(inputText);
+
+      const response = await aiService.generateResponse(inputText.trim(), {
+        userName,
+        userInterests,
+        location: currentLocation ? {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+        } : undefined,
+        isActivityRequest,
+        conversationHistory: messages.slice(-5).map(m => ({
+          role: m.isUser ? 'user' as const : 'assistant' as const,
+          content: m.text
+        }))
+      });
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: aiResponse,
+        text: response,
         isUser: false,
         timestamp: new Date(),
+        hasActivitySuggestion: response.includes('Activity Plan') || response.includes('tribe members'),
+        activityData: isActivityRequest ? { 
+          originalRequest: inputText,
+          responseType: 'activity_suggestion' 
+        } : undefined,
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -190,59 +138,83 @@ export const AIChatBot: React.FC<AIChatBotProps> = ({
       // Increment usage after successful message
       dispatch(incrementUsage());
     } catch (error) {
-      console.error('Error getting AI response:', error);
+      console.error('Error sending message:', error);
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Sorry, I'm having trouble connecting right now. But I'm still here to help you find your tribe! 🤖",
+        text: `🕯️ Hmm, I seem to be having some connection issues. As the Stoics teach: "The impediment to action advances action. What stands in the way becomes the way." 
+
+Let's try again, or perhaps we could explore your interests offline for now? 💫`,
         isUser: false,
         timestamp: new Date(),
       };
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
     }
   };
+
+  const shareActivityPlan = async (message: Message) => {
+    try {
+      if (!message.activityData) return;
+
+      const shareText = await aiService.generateSocialExport(
+        message.text,
+        [] // Would include actual participants from nearby users
+      );
+
+      await Share.share({
+        message: shareText,
+        title: 'TribeFIND Activity Plan'
+      });
+    } catch (error) {
+      console.error('Error sharing activity plan:', error);
+      Alert.alert('Sharing Error', 'Unable to share activity plan right now.');
+    }
+  };
+
+  const exportToSocial = (message: Message, platform: 'facebook' | 'instagram' | 'twitter' | 'threads') => {
+    Alert.alert(
+      'Export to Social',
+      `Export this activity plan to ${platform}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Export', 
+          onPress: () => shareActivityPlan(message)
+        }
+      ]
+    );
+  };
+
+  const scrollToBottom = () => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   return (
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>🤖 TribeFind AI</Text>
-            <Text style={styles.headerSubtitle}>Your personal discovery assistant</Text>
+      <View style={styles.engieHeader}>
+        <View style={styles.engieContainer}>
+          <View style={styles.engieAvatarContainer}>
+            <Text style={styles.engieOnlineIndicator}></Text>
           </View>
-          <View style={styles.planBadge}>
-            <Text style={[styles.planBadgeText, { color: currentPlan.color }]}>
-              {currentPlan.name}
-            </Text>
+          <View style={styles.engieInfo}>
+            <Text style={styles.engieName}>Engie</Text>
+            <Text style={styles.engieTitle}>Your personal discovery assistant</Text>
+            <Text style={styles.engieStatus}>Online</Text>
           </View>
+          <TouchableOpacity style={styles.engieStatsButton}>
+            <Text style={styles.engieStatsText}>Stats</Text>
+          </TouchableOpacity>
         </View>
-        
-        {/* Usage Indicator */}
-        {currentPlan.limits.dailyAIMessages !== -1 && (
-          <View style={styles.usageIndicator}>
-            <Text style={styles.usageText}>
-              Daily usage: {subscription.usage.dailyMessages}/{currentPlan.limits.dailyAIMessages}
-            </Text>
-            <View style={styles.usageBar}>
-              <View 
-                style={[
-                  styles.usageProgress, 
-                  { 
-                    width: `${usagePercentage}%`,
-                    backgroundColor: usagePercentage > 80 ? '#EF4444' : currentPlan.color,
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-        )}
       </View>
 
       <ScrollView 
@@ -251,55 +223,143 @@ export const AIChatBot: React.FC<AIChatBotProps> = ({
         showsVerticalScrollIndicator={false}
       >
         {messages.map((message) => (
-          <View
-            key={message.id}
-            style={[
-              styles.messageBubble,
-              message.isUser ? styles.userMessage : styles.aiMessage,
-            ]}
-          >
-            <Text style={[
-              styles.messageText,
-              message.isUser ? styles.userMessageText : styles.aiMessageText,
-            ]}>
-              {message.text}
-            </Text>
-            <Text style={styles.timestamp}>
-              {message.timestamp.toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </Text>
+          <View key={message.id} style={styles.messageWrapper}>
+            <View
+              style={[
+                styles.messageBubble,
+                message.isUser ? styles.userMessage : styles.aiMessage,
+              ]}
+            >
+              {!message.isUser && (
+                <View style={styles.aiAvatar}>
+                  <Text style={styles.aiAvatarText}>🧙‍♂️</Text>
+                </View>
+              )}
+              
+              <View style={styles.messageContent}>
+                <Text style={[
+                  styles.messageText,
+                  message.isUser ? styles.userMessageText : styles.aiMessageText,
+                ]}>
+                  {message.text}
+                </Text>
+                
+                <Text style={[
+                  styles.messageTime,
+                  message.isUser ? styles.userMessageTime : styles.aiMessageTime,
+                ]}>
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+
+                {/* Activity Suggestion Actions */}
+                {message.hasActivitySuggestion && !message.isUser && (
+                  <View style={styles.activityActions}>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => shareActivityPlan(message)}
+                    >
+                      <Text style={styles.actionButtonText}>📤 Share Plan</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.socialButton]}
+                      onPress={() => exportToSocial(message, 'instagram')}
+                    >
+                      <Text style={styles.actionButtonText}>📱 Export</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </View>
           </View>
         ))}
         
         {isLoading && (
-          <View style={[styles.messageBubble, styles.aiMessage]}>
-            <ActivityIndicator size="small" color="#6366f1" />
-            <Text style={styles.loadingText}>AI is thinking...</Text>
+          <View style={styles.loadingContainer}>
+            <View style={styles.aiMessage}>
+              <View style={styles.aiAvatar}>
+                <Text style={styles.aiAvatarText}>🧙‍♂️</Text>
+              </View>
+              <View style={styles.loadingDots}>
+                <Text style={styles.loadingText}>Engie is thinking</Text>
+                <View style={styles.dotsContainer}>
+                  <Text style={styles.dots}>...</Text>
+                </View>
+              </View>
+            </View>
           </View>
         )}
       </ScrollView>
 
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Ask me anything about finding your tribe..."
-          placeholderTextColor="#9CA3AF"
-          multiline
-          maxLength={500}
-          onSubmitEditing={sendMessage}
-          blurOnSubmit={false}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-          onPress={sendMessage}
-          disabled={!inputText.trim() || isLoading}
+        <LinearGradient
+          colors={['rgba(255,255,255,0.95)', 'rgba(248,250,252,0.95)']}
+          style={styles.inputGradient}
         >
-          <Text style={styles.sendButtonText}>→</Text>
-        </TouchableOpacity>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.textInput}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Ask Engie anything... try 'I'm bored and have 2 hours'"
+              placeholderTextColor="#94a3b8"
+              multiline
+              maxLength={500}
+              onSubmitEditing={sendMessage}
+              blurOnSubmit={false}
+            />
+            
+            <TouchableOpacity
+              style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+              onPress={sendMessage}
+              disabled={!inputText.trim() || isLoading}
+            >
+              <LinearGradient
+                colors={inputText.trim() ? ['#6366f1', '#8b5cf6'] : ['#e2e8f0', '#cbd5e1']}
+                style={styles.sendButtonGradient}
+              >
+                <Text style={styles.sendButtonText}>
+                  {isLoading ? '⏳' : '🚀'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Quick Actions */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.quickActions}
+          >
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => setInputText("I'm bored and have 2 hours")}
+            >
+              <Text style={styles.quickActionText}>⏰ I'm bored</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => setInputText("Help me find people nearby")}
+            >
+              <Text style={styles.quickActionText}>👥 Find people</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => setInputText("I need some wisdom today")}
+            >
+              <Text style={styles.quickActionText}>💭 Need wisdom</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => setInputText("Activity suggestions for today")}
+            >
+              <Text style={styles.quickActionText}>🎯 Activity ideas</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </LinearGradient>
       </View>
     </KeyboardAvoidingView>
   );
@@ -308,137 +368,259 @@ export const AIChatBot: React.FC<AIChatBotProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f8fafc',
   },
-  header: {
-    padding: 20,
+  engieHeader: {
     paddingTop: 50,
-    backgroundColor: '#6366f1',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
-  headerTop: {
+  engieContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  planBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  engieAvatarContainer: {
+    position: 'relative',
+    marginRight: 12,
   },
-  planBadgeText: {
-    fontSize: 12,
+  engieOnlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10b981',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  engieInfo: {
+    flex: 1,
+  },
+  engieName: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
+    marginBottom: 2,
   },
-  usageIndicator: {
-    marginTop: 8,
-  },
-  usageText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 6,
-  },
-  usageBar: {
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  usageProgress: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
+  engieTitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 2,
+  },
+  engieStatus: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  engieStatsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  engieStatsText: {
+    fontSize: 18,
+  },
+  engieWisdom: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  wisdomText: {
+    fontSize: 13,
+    color: 'white',
+    fontStyle: 'italic',
     textAlign: 'center',
-    marginTop: 4,
   },
   messagesContainer: {
     flex: 1,
+  },
+  messagesContent: {
     padding: 16,
+    paddingBottom: 20,
+  },
+  messageWrapper: {
+    marginBottom: 16,
   },
   messageBubble: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   userMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#6366f1',
+    justifyContent: 'flex-end',
   },
   aiMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F3F4F6',
+    justifyContent: 'flex-start',
+  },
+  aiAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    marginTop: 4,
+  },
+  aiAvatarText: {
+    fontSize: 16,
+  },
+  messageContent: {
+    flex: 1,
+    maxWidth: '85%',
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   userMessageText: {
     color: 'white',
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderBottomRightRadius: 6,
+    alignSelf: 'flex-end',
   },
   aiMessageText: {
-    color: '#1F2937',
+    color: '#1f2937',
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderBottomLeftRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  timestamp: {
+  messageTime: {
     fontSize: 11,
     marginTop: 4,
-    opacity: 0.6,
+  },
+  userMessageTime: {
+    color: '#64748b',
+    alignSelf: 'flex-end',
+    marginRight: 16,
+  },
+  aiMessageTime: {
+    color: '#64748b',
+    marginLeft: 16,
+  },
+  activityActions: {
+    flexDirection: 'row',
+    marginTop: 8,
+    marginLeft: 16,
+  },
+  actionButton: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  socialButton: {
+    backgroundColor: '#8b5cf6',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    marginBottom: 16,
+  },
+  loadingDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderBottomLeftRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 16,
+    color: '#1f2937',
+    marginRight: 8,
+  },
+  dotsContainer: {
+    width: 30,
+  },
+  dots: {
+    fontSize: 16,
     color: '#6366f1',
-    fontStyle: 'italic',
-    marginLeft: 8,
+    fontWeight: 'bold',
   },
   inputContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#e2e8f0',
+  },
+  inputGradient: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
     alignItems: 'flex-end',
+    marginBottom: 12,
   },
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 20,
+    borderColor: '#e2e8f0',
+    borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
+    backgroundColor: 'white',
     maxHeight: 100,
-    marginRight: 12,
+    marginRight: 8,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#6366f1',
-    justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  sendButtonGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    opacity: 0.5,
   },
   sendButtonText: {
-    color: 'white',
     fontSize: 20,
-    fontWeight: 'bold',
+  },
+  quickActions: {
+    flexDirection: 'row',
+  },
+  quickActionButton: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: '#6366f1',
+    fontWeight: '500',
   },
 });
 

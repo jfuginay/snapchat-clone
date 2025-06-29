@@ -1,0 +1,11 @@
+{
+  "id": 6,
+  "title": "Add AI Chat Feature to TribeFind App",
+  "description": "Integrate a comprehensive AI-powered chat assistant that users can interact with on mobile, featuring free AI options and smart fallbacks",
+  "status": "in-progress",
+  "priority": "high",
+  "dependencies": [],
+  "details": "Create a mobile-first AI chat experience for TribeFind users:\n\n**FREE AI Architecture:**\n✅ AIChatBot component with Snapchat-style design\n✅ AIService with intelligent provider fallbacks:\n   - Local Ollama (free, requires setup)\n   - Hugging Face Free Tier (free, 1000 requests/day)\n   - Rule-based responses (always works)\n✅ Smart usage tracking to avoid hitting free tier limits\n✅ AsyncStorage for persisting preferences\n\n**Integration Complete:**\n✅ Added 🤖 AI Assistant button to HomeScreen\n✅ Created AIChatScreen for full-screen chat experience\n✅ Integrated with existing Redux store for user data\n✅ Added environment variables for optional API keys\n✅ Installed @react-native-async-storage/async-storage\n\n**Cost Optimization Features:**\n✅ Token usage limits and daily quotas\n✅ Concise prompt engineering (150 token max responses)\n✅ Contextual responses using user's interests\n✅ Graceful degradation to rule-based responses\n\n**Next Steps:**\n- [ ] Add navigation routing for AIChatScreen\n- [ ] Test all AI provider fallbacks\n- [ ] Add offline detection for graceful degradation\n- [ ] Implement response caching for common questions\n- [ ] Add usage analytics dashboard",
+  "testStrategy": "Test AI chat functionality:\n1. Verify rule-based responses work without any API keys\n2. Test Hugging Face integration with free API key\n3. Validate mobile UI responsiveness and animations\n4. Test usage tracking and daily limits\n5. Verify integration with existing TribeFind user data\n6. Test offline behavior and error handling",
+  "subtasks": []
+} 

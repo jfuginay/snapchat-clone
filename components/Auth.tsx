@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Alert, StyleSheet, View, AppState, TextInput, TouchableOpacity, Text, SafeAreaView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { supabase } from '../lib/supabase'
+import TribeFindLogo from './TribeFindLogo'
 
 // Tells Supabase Auth to continuously refresh the session automatically if
 // the app is in the foreground. When this is added, you will continue to receive
@@ -49,13 +50,13 @@ export default function Auth() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#FFFC00', '#FFE135']}
+        colors={['#1a2f1a', '#2d5f3f', '#4a7c59', '#6366f1']}
         style={styles.gradient}
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.logo}>👻</Text>
-            <Text style={styles.title}>TribeFind</Text>
+                    <TribeFindLogo size={100} style={styles.logo} />
+        <Text style={styles.title}>TribeFIND</Text>
             <Text style={styles.subtitle}>Login to continue</Text>
           </View>
 
@@ -123,18 +124,21 @@ const styles = StyleSheet.create({
     marginBottom: 50,
   },
   logo: {
-    fontSize: 80,
     marginBottom: 10,
+    alignSelf: 'center',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#FFFFFF',
     marginBottom: 5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   subtitle: {
     fontSize: 16,
-    color: '#333',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   form: {
     width: '100%',

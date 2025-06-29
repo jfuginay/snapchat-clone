@@ -1,0 +1,133 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background with gradient -->
+    <rect width="1024" height="1024" fill="url(#appBgGradient)" rx="180"/>
+    
+    <!-- Outer compass ring -->
+    <circle cx="512" cy="512" r="400" fill="none" stroke="url(#ringGradient)" stroke-width="8" opacity="0.3"/>
+    <circle cx="512" cy="512" r="360" fill="none" stroke="url(#ringGradient)" stroke-width="4" opacity="0.2"/>
+    
+    <!-- Main compass points (N, E, S, W) -->
+    <g transform="translate(512, 512)">
+        <!-- North -->
+        <path d="M0,-350 L0,-280" stroke="url(#compassGradient)" stroke-width="16"/>
+        <circle cx="0" cy="-350" r="28" fill="url(#hubGradient)"/>
+        <circle cx="-45" cy="-310" r="16" fill="#6366f1"/>
+        <circle cx="45" cy="-310" r="16" fill="#8b5cf6"/>
+        <circle cx="0" cy="-260" r="12" fill="#a78bfa"/>
+        <!-- Connections -->
+        <path d="M0,-350 L-45,-310" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        <path d="M0,-350 L45,-310" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        
+        <!-- East -->
+        <path d="M350,0 L280,0" stroke="url(#compassGradient)" stroke-width="16"/>
+        <circle cx="350" cy="0" r="28" fill="url(#hubGradient)"/>
+        <circle cx="310" cy="-45" r="16" fill="#4a7c59"/>
+        <circle cx="310" cy="45" r="16" fill="#6366f1"/>
+        <circle cx="260" cy="0" r="12" fill="#8b5cf6"/>
+        <!-- Connections -->
+        <path d="M350,0 L310,-45" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        <path d="M350,0 L310,45" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        
+        <!-- South -->
+        <path d="M0,350 L0,280" stroke="url(#compassGradient)" stroke-width="16"/>
+        <circle cx="0" cy="350" r="28" fill="url(#hubGradient)"/>
+        <circle cx="-45" cy="310" r="16" fill="#8b5cf6"/>
+        <circle cx="45" cy="310" r="16" fill="#4a7c59"/>
+        <circle cx="0" cy="260" r="12" fill="#6366f1"/>
+        <!-- Connections -->
+        <path d="M0,350 L-45,310" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        <path d="M0,350 L45,310" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        
+        <!-- West -->
+        <path d="M-350,0 L-280,0" stroke="url(#compassGradient)" stroke-width="16"/>
+        <circle cx="-350" cy="0" r="28" fill="url(#hubGradient)"/>
+        <circle cx="-310" cy="-45" r="16" fill="#a78bfa"/>
+        <circle cx="-310" cy="45" r="16" fill="#8b5cf6"/>
+        <circle cx="-260" cy="0" r="12" fill="#4a7c59"/>
+        <!-- Connections -->
+        <path d="M-350,0 L-310,-45" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        <path d="M-350,0 L-310,45" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.4"/>
+        
+        <!-- Secondary compass points -->
+        <g transform="rotate(45)">
+            <path d="M0,-250 L0,-200" stroke="url(#compassGradient)" stroke-width="12" opacity="0.7"/>
+            <circle cx="0" cy="-250" r="20" fill="#6366f1"/>
+            <circle cx="-35" cy="-210" r="12" fill="#8b5cf6"/>
+            <circle cx="35" cy="-210" r="12" fill="#a78bfa"/>
+        </g>
+        
+        <g transform="rotate(135)">
+            <path d="M0,-250 L0,-200" stroke="url(#compassGradient)" stroke-width="12" opacity="0.7"/>
+            <circle cx="0" cy="-250" r="20" fill="#8b5cf6"/>
+            <circle cx="-35" cy="-210" r="12" fill="#4a7c59"/>
+            <circle cx="35" cy="-210" r="12" fill="#6366f1"/>
+        </g>
+        
+        <g transform="rotate(225)">
+            <path d="M0,-250 L0,-200" stroke="url(#compassGradient)" stroke-width="12" opacity="0.7"/>
+            <circle cx="0" cy="-250" r="20" fill="#4a7c59"/>
+            <circle cx="-35" cy="-210" r="12" fill="#a78bfa"/>
+            <circle cx="35" cy="-210" r="12" fill="#8b5cf6"/>
+        </g>
+        
+        <g transform="rotate(315)">
+            <path d="M0,-250 L0,-200" stroke="url(#compassGradient)" stroke-width="12" opacity="0.7"/>
+            <circle cx="0" cy="-250" r="20" fill="#a78bfa"/>
+            <circle cx="-35" cy="-210" r="12" fill="#6366f1"/>
+            <circle cx="35" cy="-210" r="12" fill="#4a7c59"/>
+        </g>
+    </g>
+    
+    <!-- Central AI hub -->
+    <circle cx="512" cy="512" r="60" fill="url(#centerGradient)"/>
+    <circle cx="512" cy="512" r="35" fill="url(#innerGradient)" opacity="0.9"/>
+    <circle cx="512" cy="512" r="15" fill="#e8f4f0"/>
+    
+    <!-- Inner discovery gems -->
+    <circle cx="450" cy="512" r="10" fill="#6366f1"/>
+    <circle cx="574" cy="512" r="10" fill="#8b5cf6"/>
+    <circle cx="512" cy="450" r="10" fill="#4a7c59"/>
+    <circle cx="512" cy="574" r="10" fill="#a78bfa"/>
+    
+    <!-- Key radial connections -->
+    <path d="M512,512 L512,162" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.15"/>
+    <path d="M512,512 L862,512" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.15"/>
+    <path d="M512,512 L512,862" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.15"/>
+    <path d="M512,512 L162,512" stroke="url(#connectionGradient)" stroke-width="4" opacity="0.15"/>
+    
+    <defs>
+        <linearGradient id="appBgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#1a2f1a;stop-opacity:1" />
+            <stop offset="30%" style="stop-color:#2d5f3f;stop-opacity:1" />
+            <stop offset="70%" style="stop-color:#4a7c59;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#6366f1;stop-opacity:0.8" />
+        </linearGradient>
+        <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#4a7c59;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="compassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#4a7c59;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+        </linearGradient>
+        <radialGradient id="hubGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+        </radialGradient>
+        <radialGradient id="centerGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+            <stop offset="70%" style="stop-color:#2d5f3f;stop-opacity:0.8" />
+            <stop offset="100%" style="stop-color:#1a2f1a;stop-opacity:0.6" />
+        </radialGradient>
+        <radialGradient id="innerGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+        </radialGradient>
+        <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.6" />
+            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0.6" />
+        </linearGradient>
+    </defs>
+</svg> 

@@ -162,7 +162,7 @@ export default function AuthScreen() {
           >
             {/* Header Section */}
             <View style={styles.header}>
-              <Text style={styles.appTitle}>TribeFind</Text>
+              <Text style={styles.appTitle}>TribeFIND</Text>
               <Text style={styles.subtitle}>
                 {isSignUp ? 'Join your tribe' : 'Welcome back'}
               </Text>

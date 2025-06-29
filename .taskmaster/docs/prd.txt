@@ -1,0 +1,40 @@
+# TribeFind - AI-Powered Social Discovery App PRD
+
+## Product Overview
+TribeFind is a Snapchat-style social discovery app that connects users with shared interests through AI-powered recommendations and real-time location-based discovery.
+
+## Core Features
+1. **Snapchat-style Camera Interface** - Primary interaction through camera with filters and photo sharing
+2. **AI-Powered RAG System** - Smart content recommendations and user matching based on interests
+3. **Real-time Location Discovery** - Find nearby tribe members with shared interests
+4. **Onboarding Tutorial** - 4-step Snapchat-style tutorial introducing key features
+5. **Interest-based Matching** - AI algorithms match users based on shared activities and interests
+6. **Chat System** - Real-time messaging between matched users
+7. **Profile Management** - User profiles with interests, photos, and privacy settings
+
+## Technical Stack
+- React Native with Expo
+- TypeScript
+- Redux Toolkit for state management
+- Supabase for backend (authentication, database, real-time)
+- Google Places API for location services
+- Custom AI/RAG system for recommendations
+- Camera filters and image processing
+
+## Current Version: 1.4.1
+- Recently updated onboarding tutorial to Snapchat-style 4-step flow
+- Custom TribeFind-branded app icons
+- Production-ready for App Store submission
+
+## Key User Flows
+1. Sign up → Onboarding tutorial → Interest selection → Start discovering
+2. Camera → Capture photo → Apply filters → Share or save
+3. Map view → Discover nearby users → Start chat → Build connections
+4. Profile setup → Privacy settings → Interest management
+
+## Success Metrics
+- User engagement with onboarding tutorial completion
+- Photo sharing and camera usage rates
+- Location-based discovery and matching success
+- Real-time chat engagement
+- User retention and return rates 
