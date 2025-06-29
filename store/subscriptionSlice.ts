@@ -82,14 +82,15 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     limits: {
       dailyAIMessages: -1, // Unlimited
       monthlyAIMessages: -1, // Unlimited
-      aiProviders: ['CLAUDE_HAIKU', 'OPENAI_GPT3', 'HUGGINGFACE_FREE', 'RULE_BASED'],
+      aiProviders: ['ENGIE_OPENAI', 'CLAUDE_HAIKU', 'OPENAI_GPT3', 'HUGGINGFACE_FREE', 'RULE_BASED'],
       features: ['premium_chat', 'unlimited_messages', 'advanced_ai', 'custom_personality'],
       responseQuality: 'premium',
     },
     features: [
       'Unlimited AI messages',
-      'Premium AI models (Claude, GPT)',
+      'Premium AI models (OpenAI GPT-4o)',
       'Advanced conversation abilities',
+      'Extended conversation memory',
       'Custom AI personality',
       'Priority features access',
       'Premium support',

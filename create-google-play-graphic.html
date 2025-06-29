@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TribeFIND Google Play Feature Graphic</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .feature-graphic {
+            width: 1024px;
+            height: 500px;
+            background: linear-gradient(135deg, #0a1a2e 0%, #16213e 30%, #1a4d5c 60%, #2d5f3f 100%);
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .left-content {
+            flex: 1;
+            padding: 60px 80px;
+            z-index: 2;
+        }
+        
+        .brand-badge {
+            background: rgba(139, 92, 246, 0.3);
+            color: #a78bfa;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 25px;
+            border: 1px solid rgba(139, 92, 246, 0.4);
+        }
+        
+        .logo-text {
+            font-size: 64px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #4a7c59 0%, #6366f1 50%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+        }
+        
+        .tagline {
+            font-size: 20px;
+            color: #a78bfa;
+            margin-bottom: 30px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        .features {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .feature-icon {
+            width: 8px;
+            height: 8px;
+            background: #6366f1;
+            border-radius: 2px;
+            transform: rotate(45deg);
+        }
+        
+        .availability {
+            position: absolute;
+            bottom: 30px;
+            left: 80px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .right-content {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .network-container {
+            width: 400px;
+            height: 400px;
+            position: relative;
+        }
+        
+        .network-circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+        }
+        
+        .circle-1 {
+            width: 300px;
+            height: 300px;
+            top: 50px;
+            left: 50px;
+        }
+        
+        .circle-2 {
+            width: 200px;
+            height: 200px;
+            top: 100px;
+            left: 100px;
+        }
+        
+        .node {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+        
+        .node-large {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .node-medium {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .node-small {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .connection-line {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.3), rgba(99, 102, 241, 0.1));
+            transform-origin: left center;
+        }
+        
+        .glow-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 70% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="feature-graphic" id="featureGraphic">
+        <div class="glow-effect"></div>
+        
+        <div class="left-content">
+            <div class="brand-badge">AI-Powered Discovery</div>
+            <div class="logo-text">TribeFIND</div>
+            <div class="tagline">Find Interests • Nurture Discovery</div>
+            
+            <div class="features">
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div>AI-powered social discovery</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div>Find your tribe through shared interests</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div>Discover local gems with smart recommendations</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div>Connect with like-minded people nearby</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="availability">Available on iOS & Android</div>
+        
+        <div class="right-content">
+            <div class="network-container">
+                <!-- Network circles -->
+                <div class="network-circle circle-1"></div>
+                <div class="network-circle circle-2"></div>
+                
+                <!-- Connection lines -->
+                <div class="connection-line" style="top: 160px; left: 80px; width: 120px; transform: rotate(25deg);"></div>
+                <div class="connection-line" style="top: 180px; left: 120px; width: 100px; transform: rotate(-15deg);"></div>
+                <div class="connection-line" style="top: 200px; left: 100px; width: 140px; transform: rotate(45deg);"></div>
+                <div class="connection-line" style="top: 220px; left: 140px; width: 80px; transform: rotate(-35deg);"></div>
+                <div class="connection-line" style="top: 160px; left: 200px; width: 90px; transform: rotate(65deg);"></div>
+                <div class="connection-line" style="top: 240px; left: 180px; width: 110px; transform: rotate(15deg);"></div>
+                
+                <!-- Network nodes -->
+                <div class="node node-large" style="top: 50px; right: 60px;"></div>
+                <div class="node node-medium" style="top: 80px; right: 40px;"></div>
+                <div class="node node-small" style="top: 70px; right: 20px;"></div>
+                <div class="node node-medium" style="top: 120px; right: 80px;"></div>
+                <div class="node node-small" style="top: 140px; right: 100px;"></div>
+                
+                <div class="node node-large" style="top: 180px; right: 30px;"></div>
+                <div class="node node-medium" style="top: 200px; right: 70px;"></div>
+                <div class="node node-small" style="top: 220px; right: 50px;"></div>
+                <div class="node node-medium" style="top: 160px; right: 110px;"></div>
+                
+                <div class="node node-large" style="top: 280px; right: 90px;"></div>
+                <div class="node node-medium" style="top: 300px; right: 40px;"></div>
+                <div class="node node-small" style="top: 320px; right: 60px;"></div>
+                <div class="node node-small" style="top: 290px; right: 20px;"></div>
+                
+                <div class="node node-medium" style="top: 100px; right: 140px;"></div>
+                <div class="node node-small" style="top: 260px; right: 130px;"></div>
+                <div class="node node-large" style="top: 350px; right: 80px;"></div>
+                
+                <!-- Center hub -->
+                <div class="node node-large" style="top: 200px; left: 200px; width: 24px; height: 24px; box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-download as 1024x500 PNG
+        setTimeout(() => {
+            html2canvas(document.getElementById('featureGraphic'), {
+                width: 1024,
+                height: 500,
+                scale: 2,
+                backgroundColor: null
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'tribefind-google-play-feature-1024x500.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }, 1000);
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html> 

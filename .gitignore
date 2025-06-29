@@ -38,6 +38,13 @@ yarn-error.*
 .env
 .env.local
 .env*.local
+.env.development
+.env.production
+
+# Build files (too large for GitHub)
+*.aab
+*.apk
+*.ipa
 
 # typescript
 *.tsbuildinfo

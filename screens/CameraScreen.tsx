@@ -10,6 +10,7 @@ import {
   StatusBar,
   Dimensions,
   Modal,
+  Platform,
 } from 'react-native'
 import { CameraView, CameraType, FlashMode, useCameraPermissions } from 'expo-camera'
 import * as MediaLibrary from 'expo-media-library'
@@ -18,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../store'
 import { supabase } from '../lib/supabase'
 import ImageFilters from '../components/ImageFilters'
+import { useAndroidBackHandler } from '../components/AndroidBackHandler'
 
 const { width, height } = Dimensions.get('window')
 
@@ -35,6 +37,23 @@ export default function CameraScreen() {
   const [filteredPhotoUri, setFilteredPhotoUri] = useState<string | null>(null)
   const cameraRef = useRef<CameraView>(null)
   const { user } = useAppSelector((state: any) => state.auth)
+
+  // Android back button handling
+  useAndroidBackHandler({
+    onBackPress: () => {
+      if (showFilters) {
+        setShowFilters(false)
+        return true
+      }
+      if (capturedPhoto) {
+        setCapturedPhoto(null)
+        setFilteredPhotoUri(null)
+        return true
+      }
+      // Let default navigation handle
+      return false
+    }
+  })
 
   useEffect(() => {
     // Request media library permissions
@@ -427,53 +446,53 @@ export default function CameraScreen() {
         style={styles.camera}
         facing={facing}
         flash={flash}
-      >
-        {/* Top Controls */}
-        <View style={styles.topControls}>
-          <TouchableOpacity style={styles.controlButton} onPress={toggleFlash}>
-            <Ionicons name={getFlashIcon()} size={24} color="white" />
-          </TouchableOpacity>
-          
-          <View style={styles.flashIndicator}>
-            <Text style={styles.flashText}>{flash.toUpperCase()}</Text>
+      />
+      
+      {/* Top Controls - Positioned absolutely over camera */}
+      <View style={styles.topControls}>
+        <TouchableOpacity style={styles.controlButton} onPress={toggleFlash}>
+          <Ionicons name={getFlashIcon()} size={24} color="white" />
+        </TouchableOpacity>
+        
+        <View style={styles.flashIndicator}>
+          <Text style={styles.flashText}>{flash.toUpperCase()}</Text>
+        </View>
+      </View>
+
+      {/* Mode Selector - Positioned absolutely over camera */}
+      <View style={styles.modeSelector}>
+        <TouchableOpacity
+          style={[styles.modeButton, mode === 'photo' && styles.activeModeButton]}
+          onPress={() => setMode('photo')}
+        >
+          <Ionicons name="camera" size={20} color={mode === 'photo' ? '#000' : 'white'} />
+          <Text style={[styles.modeText, mode === 'photo' && styles.activeModeText]}>Photo</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom Controls - Positioned absolutely over camera */}
+      <View style={styles.bottomControls}>
+        <TouchableOpacity style={styles.galleryButton}>
+          <Ionicons name="images" size={24} color="white" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.captureButton} 
+          onPress={takePicture}
+        >
+          <View style={[styles.captureButtonInner, mode === 'video' && styles.videoCaptureButton]}>
+            <Ionicons 
+              name={mode === 'photo' ? 'camera' : 'videocam'} 
+              size={24} 
+              color={mode === 'photo' ? '#000' : 'white'} 
+            />
           </View>
-        </View>
-
-        {/* Mode Selector */}
-        <View style={styles.modeSelector}>
-          <TouchableOpacity
-            style={[styles.modeButton, mode === 'photo' && styles.activeModeButton]}
-            onPress={() => setMode('photo')}
-          >
-            <Ionicons name="camera" size={20} color={mode === 'photo' ? '#000' : 'white'} />
-            <Text style={[styles.modeText, mode === 'photo' && styles.activeModeText]}>Photo</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Controls */}
-        <View style={styles.bottomControls}>
-          <TouchableOpacity style={styles.galleryButton}>
-            <Ionicons name="images" size={24} color="white" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.captureButton} 
-            onPress={takePicture}
-          >
-            <View style={[styles.captureButtonInner, mode === 'video' && styles.videoCaptureButton]}>
-              <Ionicons 
-                name={mode === 'photo' ? 'camera' : 'videocam'} 
-                size={24} 
-                color={mode === 'photo' ? '#000' : 'white'} 
-              />
-            </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
-            <Ionicons name="camera-reverse" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-      </CameraView>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
+          <Ionicons name="camera-reverse" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   )
 }
@@ -518,11 +537,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   topControls: {
+    position: 'absolute',
+    top: 20,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
   },
   controlButton: {
     width: 44,

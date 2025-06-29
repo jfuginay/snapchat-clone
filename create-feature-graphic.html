@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TribeFIND Feature Graphic Generator</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .feature-graphic {
+            width: 1024px;
+            height: 500px;
+            background: linear-gradient(135deg, #1a2f1a 0%, #2d5f3f 25%, #4a7c59 50%, #6366f1 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px 60px;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .left-content {
+            flex: 1;
+            color: white;
+            z-index: 2;
+        }
+        
+        .logo-text {
+            font-size: 72px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .tagline {
+            font-size: 28px;
+            color: #C4B5FD;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: #DDD6FE;
+            font-style: italic;
+        }
+        
+        .right-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        .compass-logo {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.4);
+            position: relative;
+        }
+        
+        .compass-inner {
+            width: 160px;
+            height: 160px;
+            background: conic-gradient(from 0deg, #6366f1, #8b5cf6, #a78bfa, #c4b5fd, #6366f1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .compass-center {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #6366f1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .compass-point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #6366f1;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        
+        .point-n { top: 10px; left: 50%; transform: translateX(-50%); }
+        .point-e { right: 10px; top: 50%; transform: translateY(-50%); }
+        .point-s { bottom: 10px; left: 50%; transform: translateX(-50%); }
+        .point-w { left: 10px; top: 50%; transform: translateY(-50%); }
+        
+        .features {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.1);
+            padding: 12px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .feature-icon {
+            font-size: 24px;
+        }
+        
+        .feature-text {
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .decorative-circles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        
+        .circle-1 {
+            width: 300px;
+            height: 300px;
+            top: -150px;
+            right: -150px;
+        }
+        
+        .circle-2 {
+            width: 200px;
+            height: 200px;
+            bottom: -100px;
+            left: -100px;
+        }
+        
+        .download-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 25px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .download-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="feature-graphic" id="featureGraphic">
+        <div class="decorative-circles">
+            <div class="circle circle-1"></div>
+            <div class="circle circle-2"></div>
+        </div>
+        
+        <div class="left-content">
+            <div class="logo-text">TribeFIND</div>
+            <div class="tagline">AI-Powered Social Discovery</div>
+            <div class="subtitle">Find Interests • Nurture Discovery</div>
+            
+            <div class="features">
+                <div class="feature-item">
+                    <div class="feature-icon">🤖</div>
+                    <div class="feature-text">Meet Engie - Your AI Companion</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📍</div>
+                    <div class="feature-text">Smart Location-Based Matching</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✨</div>
+                    <div class="feature-text">Find Your Perfect Tribe</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="right-content">
+            <div class="compass-logo">
+                <div class="compass-inner">
+                    <div class="compass-point point-n"></div>
+                    <div class="compass-point point-e"></div>
+                    <div class="compass-point point-s"></div>
+                    <div class="compass-point point-w"></div>
+                    <div class="compass-center">TF</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-generate the feature graphic as image
+        setTimeout(() => {
+            html2canvas(document.getElementById('featureGraphic'), {
+                width: 1024,
+                height: 500,
+                scale: 1
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'tribefind-feature-graphic-1024x500.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }, 1000);
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html> 

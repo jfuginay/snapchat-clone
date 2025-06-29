@@ -158,54 +158,140 @@ const ChatListScreen: React.FC = () => {
   };
 
   const startChat = async (otherUser: User) => {
-    if (!user) return;
+    if (!user) {
+      console.error('❌ StartChat: No user logged in');
+      Alert.alert('Error', 'You must be logged in to start a chat');
+      return;
+    }
+
+    console.log('🔄 Starting chat with:', { 
+      currentUser: user.id, 
+      otherUser: otherUser.id,
+      currentUsername: user.username,
+      otherUsername: otherUser.username 
+    });
 
     try {
-      // Check if chat already exists
-      const { data: existingChat } = await supabase
-        .from('chat_rooms')
-        .select('id')
-        .eq('type', 'direct')
-        .contains('participants', [user.id, otherUser.id])
+      // First verify both users exist in database
+      const { data: currentUserCheck } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('id', user.id)
         .single();
+
+      const { data: otherUserCheck } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('id', otherUser.id)
+        .single();
+
+      if (!currentUserCheck) {
+        console.error('❌ Current user not found in database:', user.id);
+        Alert.alert('Error', 'Your profile was not found. Please logout and login again.');
+        return;
+      }
+
+      if (!otherUserCheck) {
+        console.error('❌ Other user not found in database:', otherUser.id);
+        Alert.alert('Error', 'The user you\'re trying to chat with was not found.');
+        return;
+      }
+
+      console.log('✅ Both users verified in database');
+
+      // Check if chat already exists
+      console.log('🔍 Checking for existing chat...');
+      const { data: existingChat, error: searchError } = await supabase
+        .from('chat_rooms')
+        .select('id, participants')
+        .eq('type', 'direct')
+        .contains('participants', [user.id, otherUser.id]);
+
+      if (searchError) {
+        console.error('❌ Error searching for existing chat:', searchError);
+        Alert.alert('Error', `Failed to search for existing chat: ${searchError.message}`);
+        return;
+      }
+
+      // Filter to find exact match (both users in participants)
+      const exactMatch = existingChat?.find(chat => 
+        chat.participants?.length === 2 && 
+        chat.participants.includes(user.id) && 
+        chat.participants.includes(otherUser.id)
+      );
 
       let chatRoomId: string;
 
-      if (existingChat) {
-        chatRoomId = existingChat.id;
+      if (exactMatch) {
+        console.log('✅ Found existing chat:', exactMatch.id);
+        chatRoomId = exactMatch.id;
       } else {
-        // Create new chat room
-        const { data: newChat, error } = await supabase
+        console.log('📝 Creating new chat room...');
+        
+        // Create new chat room with comprehensive data
+        const chatData = {
+          name: `${user.username}-${otherUser.username}`,
+          type: 'direct',
+          participants: [user.id, otherUser.id],
+          created_by: user.id,
+        };
+
+        console.log('📝 Chat room data:', chatData);
+
+        const { data: newChat, error: createError } = await supabase
           .from('chat_rooms')
-          .insert({
-            name: `${user.username}-${otherUser.username}`,
-            type: 'direct',
-            participants: [user.id, otherUser.id],
-            created_by: user.id,
-          })
+          .insert(chatData)
           .select('id')
           .single();
 
-        if (error) {
-          Alert.alert('Error', 'Failed to create chat');
+        if (createError) {
+          console.error('❌ Failed to create chat room:', createError);
+          console.error('❌ Error details:', {
+            message: createError.message,
+            details: createError.details,
+            hint: createError.hint,
+            code: createError.code
+          });
+
+          // Show more specific error message
+          let errorMessage = 'Failed to create chat';
+          if (createError.message.includes('policy')) {
+            errorMessage = 'Database permission error. Please contact support.';
+          } else if (createError.message.includes('not found')) {
+            errorMessage = 'Database table not found. Please contact support.';
+          } else if (createError.message.includes('unique')) {
+            errorMessage = 'Chat already exists but could not be found.';
+          }
+
+          Alert.alert('Error', errorMessage);
           return;
         }
 
+        if (!newChat?.id) {
+          console.error('❌ Chat created but no ID returned');
+          Alert.alert('Error', 'Chat was created but could not be accessed');
+          return;
+        }
+
+        console.log('✅ Successfully created new chat:', newChat.id);
         chatRoomId = newChat.id;
       }
 
       // Refresh chat list to show the new chat
+      console.log('🔄 Refreshing chat list...');
       loadChatRooms();
 
       // Navigate to chat screen
+      console.log('📱 Navigating to chat screen...');
       (navigation as any).navigate('ChatScreen', {
         chatRoomId,
         otherUser,
       });
 
     } catch (error) {
-      console.error('Error starting chat:', error);
-      Alert.alert('Error', 'Failed to start chat');
+      console.error('❌ Unexpected error starting chat:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Failed to start chat: ${errorMessage}`);
     }
   };
 

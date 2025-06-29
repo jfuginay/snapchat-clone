@@ -113,33 +113,56 @@ class AIService {
       isActivityRequest?: boolean;
     } = {}
   ): Promise<string> {
+    console.log('🔍 Engie generateResponse called with:', { 
+      prompt: prompt.substring(0, 50) + '...', 
+      hasContext: !!context,
+      isActivityRequest: context.isActivityRequest 
+    });
+
     // Check subscription limits first
     const canSendMessage = selectCanSendMessage(store.getState());
     const currentPlan = selectCurrentPlan(store.getState());
     
+    console.log('💳 Subscription check:', { 
+      canSendMessage, 
+      currentPlanId: currentPlan.id,
+      tierName: currentPlan.name
+    });
+    
     if (!canSendMessage) {
+      console.log('🚫 Message blocked by subscription limits');
       store.dispatch(setUpgradePrompt(true));
       return this.generateUpgradeMessage(currentPlan);
     }
 
     // Check if this is an activity request with RAG
     if (context.isActivityRequest || this.isActivityQuery(prompt)) {
+      console.log('🎯 Detected activity request, using RAG response');
       return await this.generateActivitySuggestion(prompt, context);
     }
 
-    // Use Engie's OpenAI integration
-    try {
-      const response = await this.callEngieOpenAI(prompt, context);
-      if (response) {
-        await this.trackUsage('ENGIE_OPENAI');
-        store.dispatch(incrementUsage());
-        return response;
+    // Use Engie's OpenAI integration for Pro+ users
+    if (currentPlan.id === 'pro' || currentPlan.id === 'premium') {
+      console.log(`🎖️ ${currentPlan.id.toUpperCase()} user detected, attempting OpenAI call...`);
+      try {
+        const response = await this.callEngieOpenAI(prompt, context);
+        if (response) {
+          console.log('✅ OpenAI response received, tracking usage');
+          await this.trackUsage('ENGIE_OPENAI');
+          store.dispatch(incrementUsage());
+          return response;
+        } else {
+          console.log('❌ OpenAI returned null, falling back');
+        }
+      } catch (error) {
+        console.error('❌ OpenAI call failed:', error);
       }
-    } catch (error) {
-      console.warn('Engie OpenAI failed:', error);
+    } else {
+      console.log(`📱 ${currentPlan.id.toUpperCase()} user - skipping OpenAI, using fallback`);
     }
 
     // Fallback to Engie's philosophical responses
+    console.log('🔄 Using philosophical fallback response');
     const fallbackResponse = this.generateEngiePhilosophicalResponse(prompt, context);
     store.dispatch(incrementUsage());
     return fallbackResponse;
@@ -147,13 +170,21 @@ class AIService {
 
   private async callEngieOpenAI(prompt: string, context: any): Promise<string | null> {
     try {
+      // Check if API key is configured
+      const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+      if (!apiKey || apiKey === 'sk-your-openai-api-key-here') {
+        console.warn('🚨 OpenAI API key not configured properly. Using fallback responses.');
+        return null;
+      }
+
+      console.log('🤖 Making OpenAI API call...');
       const systemPrompt = this.buildEngieSystemPrompt(context);
       const userPrompt = this.buildEngieUserPrompt(prompt, context);
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -171,10 +202,16 @@ class AIService {
 
       if (response.ok) {
         const data = await response.json();
-        return data.choices[0]?.message?.content?.trim() || null;
+        const aiResponse = data.choices[0]?.message?.content?.trim();
+        console.log('✅ OpenAI API success:', aiResponse ? 'Response received' : 'Empty response');
+        return aiResponse || null;
+      } else {
+        const errorText = await response.text();
+        console.error('❌ OpenAI API error:', response.status, errorText);
+        return null;
       }
     } catch (error) {
-      console.error('Engie OpenAI error:', error);
+      console.error('❌ OpenAI API network error:', error);
     }
     return null;
   }

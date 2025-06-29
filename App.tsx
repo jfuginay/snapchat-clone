@@ -4,11 +4,17 @@ import { store } from './store'
 import { AuthProvider } from './services/AuthService'
 import { GoogleSignInService } from './services/GoogleSignInService'
 import { TwitterSignInService } from './services/TwitterSignInService'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import AndroidOptimizations from './utils/AndroidOptimizations'
 import Navigation from './navigation'
 
 export default function App() {
   useEffect(() => {
     console.log('🚀 TribeFind starting up...')
+    
+    // Initialize Android optimizations first
+    AndroidOptimizations.initialize()
+    
     console.log('🔧 Environment variables check:')
     console.log('- NODE_ENV:', process.env.NODE_ENV || 'development')
     console.log('- EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅ Loaded' : '❌ Missing (using fallback)')
@@ -56,10 +62,21 @@ export default function App() {
   }, [])
 
   return (
-    <Provider store={store}>
-      <AuthProvider>
-        <Navigation />
-      </AuthProvider>
-    </Provider>
+    <ErrorBoundary onError={(error, errorInfo) => {
+      console.error('🚨 App-level error caught:', error)
+      console.error('🚨 Error Info:', errorInfo)
+      // TODO: Send to crash reporting service
+    }}>
+      <Provider store={store}>
+        <AuthProvider>
+          <ErrorBoundary onError={(error, errorInfo) => {
+            console.error('🚨 Auth-level error caught:', error)
+            // TODO: Send auth-specific error to reporting service
+          }}>
+            <Navigation />
+          </ErrorBoundary>
+        </AuthProvider>
+      </Provider>
+    </ErrorBoundary>
   )
 }

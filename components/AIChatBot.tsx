@@ -92,6 +92,13 @@ What brings you here today? Are you seeking new connections, activity ideas, or 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
+    console.log('üí¨ Sending message to Engie:', { 
+      message: inputText.substring(0, 50) + '...',
+      currentTier: currentPlan.id,
+      canSend: canSendMessage,
+      usagePercentage: usagePercentage
+    });
+
     const userMessage: Message = {
       id: Date.now().toString(),
       text: inputText.trim(),
@@ -107,6 +114,13 @@ What brings you here today? Are you seeking new connections, activity ideas, or 
       // Check if this is an activity request
       const isActivityRequest = /bored|activity|activities|do|time|hours|hrs|suggestions|recommend|ideas|plans|what can|what should/i.test(inputText);
 
+      // Enhanced conversation history for premium users
+      const historyLength = currentPlan.id === 'premium' ? 8 : 5;
+      const conversationHistory = messages.slice(-historyLength).map(m => ({
+        role: m.isUser ? 'user' as const : 'assistant' as const,
+        content: m.text
+      }));
+
       const response = await aiService.generateResponse(inputText.trim(), {
         userName,
         userInterests,
@@ -115,10 +129,7 @@ What brings you here today? Are you seeking new connections, activity ideas, or 
           longitude: currentLocation.longitude,
         } : undefined,
         isActivityRequest,
-        conversationHistory: messages.slice(-5).map(m => ({
-          role: m.isUser ? 'user' as const : 'assistant' as const,
-          content: m.text
-        }))
+        conversationHistory
       });
 
       const aiMessage: Message = {
@@ -200,6 +211,7 @@ Let's try again, or perhaps we could explore your interests offline for now? üí
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <View style={styles.engieHeader}>
         <View style={styles.engieContainer}>
@@ -209,7 +221,15 @@ Let's try again, or perhaps we could explore your interests offline for now? üí
           <View style={styles.engieInfo}>
             <Text style={styles.engieName}>Engie</Text>
             <Text style={styles.engieTitle}>Your personal discovery assistant</Text>
-            <Text style={styles.engieStatus}>Online</Text>
+            <View style={styles.providerInfo}>
+              <Text style={styles.engieStatus}>Online</Text>
+              {currentPlan.id === 'premium' && (
+                <Text style={styles.premiumBadge}>üöÄ Premium AI</Text>
+              )}
+              {currentPlan.id === 'pro' && (
+                <Text style={styles.proBadge}>‚≠ê Enhanced AI</Text>
+              )}
+            </View>
           </View>
           <TouchableOpacity style={styles.engieStatsButton}>
             <Text style={styles.engieStatsText}>Stats</Text>
@@ -621,6 +641,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6366f1',
     fontWeight: '500',
+  },
+  providerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  premiumBadge: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  proBadge: {
+    backgroundColor: '#8b5cf6',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

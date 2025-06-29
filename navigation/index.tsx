@@ -7,6 +7,7 @@ import { useAppSelector } from '../store'
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth } from '../services/AuthService'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import TribeFindLogo from '../components/TribeFindLogo'
 
 // Import screens
@@ -32,66 +33,71 @@ const Tab = createBottomTabNavigator<TabParamList>()
 
 function TabNavigator() {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home'
+    <ErrorBoundary onError={(error, errorInfo) => {
+      console.error('🚨 Tab navigation error caught:', error)
+      // TODO: Send tab-specific error to reporting service
+    }}>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName: keyof typeof Ionicons.glyphMap = 'home'
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline'
-          } else if (route.name === 'Camera') {
-            iconName = focused ? 'camera' : 'camera-outline'
-          } else if (route.name === 'Chat') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline'
-          } else if (route.name === 'Map') {
-            iconName = focused ? 'map' : 'map-outline'
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline'
-          }
+            if (route.name === 'Home') {
+              iconName = focused ? 'home' : 'home-outline'
+            } else if (route.name === 'Camera') {
+              iconName = focused ? 'camera' : 'camera-outline'
+            } else if (route.name === 'Chat') {
+              iconName = focused ? 'chatbubbles' : 'chatbubbles-outline'
+            } else if (route.name === 'Map') {
+              iconName = focused ? 'map' : 'map-outline'
+            } else if (route.name === 'Profile') {
+              iconName = focused ? 'person' : 'person-outline'
+            }
 
-          return <Ionicons name={iconName} size={size} color={color} />
-        },
-        tabBarActiveTintColor: '#a855f7',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.6)',
-        tabBarStyle: {
-          backgroundColor: '#1e1b4b',
-          borderTopColor: '#312e81',
-        },
-        headerStyle: {
-          backgroundColor: '#6366f1',
-        },
-        headerTitleStyle: {
-          color: '#000',
-          fontWeight: 'bold',
-        },
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen 
-        name="Camera" 
-        component={CameraScreen}
-        options={{
-          headerShown: false, // Hide header for camera for full screen experience
-        }}
-      />
-      <Tab.Screen 
-        name="Chat" 
-        component={ChatListScreen}
-        options={{
-          title: 'Tribe Chat',
+            return <Ionicons name={iconName} size={size} color={color} />
+          },
+          tabBarActiveTintColor: '#a855f7',
+          tabBarInactiveTintColor: 'rgba(255,255,255,0.6)',
+          tabBarStyle: {
+            backgroundColor: '#1e1b4b',
+            borderTopColor: '#312e81',
+          },
           headerStyle: {
             backgroundColor: '#6366f1',
           },
           headerTitleStyle: {
-            color: '#fff',
+            color: '#000',
             fontWeight: 'bold',
           },
-          headerTintColor: '#fff',
-        }}
-      />
-      <Tab.Screen name="Map" component={MapScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+        })}
+      >
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen 
+          name="Camera" 
+          component={CameraScreen}
+          options={{
+            headerShown: false, // Hide header for camera for full screen experience
+          }}
+        />
+        <Tab.Screen 
+          name="Chat" 
+          component={ChatListScreen}
+          options={{
+            title: 'Tribe Chat',
+            headerStyle: {
+              backgroundColor: '#6366f1',
+            },
+            headerTitleStyle: {
+              color: '#fff',
+              fontWeight: 'bold',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Tab.Screen name="Map" component={MapScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
+      </Tab.Navigator>
+    </ErrorBoundary>
   )
 }
 
@@ -143,105 +149,110 @@ export default function Navigation() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated && user ? (
-          // User is authenticated - show main app
-          <>
-            <Stack.Screen name="Main" component={TabNavigator} />
-            <Stack.Screen 
-              name="LocationSettings" 
-              component={LocationSettingsScreen}
-              options={{
-                headerShown: true,
-                title: 'Location Settings',
-                headerStyle: {
-                  backgroundColor: '#6366f1',
-                },
-                headerTitleStyle: {
-                  color: '#fff',
-                  fontWeight: 'bold',
-                },
-                headerTintColor: '#fff',
-              }}
-            />
-            <Stack.Screen 
-              name="HomeLocationSettings" 
-              component={HomeLocationSettingsScreen}
-              options={{
-                headerShown: true,
-                title: 'Home Location',
-                headerStyle: {
-                  backgroundColor: '#6366f1',
-                },
-                headerTitleStyle: {
-                  color: '#fff',
-                  fontWeight: 'bold',
-                },
-                headerTintColor: '#fff',
-              }}
-            />
-            <Stack.Screen 
-              name="Activities" 
-              component={ActivitiesScreen}
-              options={{
-                presentation: 'modal',
-                headerShown: false, // Using custom header in the component
-              }}
-            />
-            <Stack.Screen 
-              name="UserSearch" 
-              component={UserSearchScreen}
-              options={{
-                headerShown: true,
-                title: 'Find Friends',
-                headerStyle: {
-                  backgroundColor: '#6366f1',
-                },
-                headerTitleStyle: {
-                  color: '#fff',
-                  fontWeight: 'bold',
-                },
-                headerTintColor: '#fff',
-              }}
-            />
-            <Stack.Screen 
-              name="ChatScreen" 
-              component={ChatScreen}
-              options={{
-                headerShown: false, // Using custom header in the component
-              }}
-            />
-            <Stack.Screen 
-              name="AIChatScreen" 
-              component={AIChatScreen}
-              options={{
-                headerShown: true,
-                headerTitle: 'AI Assistant',
-                headerStyle: { backgroundColor: '#6366f1' },
-                headerTintColor: 'white',
-                headerTitleStyle: { fontWeight: 'bold' },
-              }}
-            />
-            <Stack.Screen 
-              name="SubscriptionScreen" 
-              component={SubscriptionScreen}
-              options={{
-                headerShown: true,
-                headerTitle: 'Upgrade',
-                headerStyle: { backgroundColor: '#6366f1' },
-                headerTintColor: 'white',
-                headerTitleStyle: { fontWeight: 'bold' },
-                presentation: 'modal',
-              }}
-            />
-          </>
-        ) : (
-          // User is not authenticated - show auth screen
-          <Stack.Screen name="Auth" component={AuthScreen} />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ErrorBoundary onError={(error, errorInfo) => {
+      console.error('🚨 Navigation container error caught:', error)
+      // TODO: Send navigation-specific error to reporting service
+    }}>
+      <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {isAuthenticated && user ? (
+            // User is authenticated - show main app
+            <>
+              <Stack.Screen name="Main" component={TabNavigator} />
+              <Stack.Screen 
+                name="LocationSettings" 
+                component={LocationSettingsScreen}
+                options={{
+                  headerShown: true,
+                  title: 'Location Settings',
+                  headerStyle: {
+                    backgroundColor: '#6366f1',
+                  },
+                  headerTitleStyle: {
+                    color: '#fff',
+                    fontWeight: 'bold',
+                  },
+                  headerTintColor: '#fff',
+                }}
+              />
+              <Stack.Screen 
+                name="HomeLocationSettings" 
+                component={HomeLocationSettingsScreen}
+                options={{
+                  headerShown: true,
+                  title: 'Home Location',
+                  headerStyle: {
+                    backgroundColor: '#6366f1',
+                  },
+                  headerTitleStyle: {
+                    color: '#fff',
+                    fontWeight: 'bold',
+                  },
+                  headerTintColor: '#fff',
+                }}
+              />
+              <Stack.Screen 
+                name="Activities" 
+                component={ActivitiesScreen}
+                options={{
+                  presentation: 'modal',
+                  headerShown: false, // Using custom header in the component
+                }}
+              />
+              <Stack.Screen 
+                name="UserSearch" 
+                component={UserSearchScreen}
+                options={{
+                  headerShown: true,
+                  title: 'Find Friends',
+                  headerStyle: {
+                    backgroundColor: '#6366f1',
+                  },
+                  headerTitleStyle: {
+                    color: '#fff',
+                    fontWeight: 'bold',
+                  },
+                  headerTintColor: '#fff',
+                }}
+              />
+              <Stack.Screen 
+                name="ChatScreen" 
+                component={ChatScreen}
+                options={{
+                  headerShown: false, // Using custom header in the component
+                }}
+              />
+              <Stack.Screen 
+                name="AIChatScreen" 
+                component={AIChatScreen}
+                options={{
+                  headerShown: true,
+                  headerTitle: 'AI Assistant',
+                  headerStyle: { backgroundColor: '#6366f1' },
+                  headerTintColor: 'white',
+                  headerTitleStyle: { fontWeight: 'bold' },
+                }}
+              />
+              <Stack.Screen 
+                name="SubscriptionScreen" 
+                component={SubscriptionScreen}
+                options={{
+                  headerShown: true,
+                  headerTitle: 'Upgrade',
+                  headerStyle: { backgroundColor: '#6366f1' },
+                  headerTintColor: 'white',
+                  headerTitleStyle: { fontWeight: 'bold' },
+                  presentation: 'modal',
+                }}
+              />
+            </>
+          ) : (
+            // User is not authenticated - show auth screen
+            <Stack.Screen name="Auth" component={AuthScreen} />
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
   )
 }
 
