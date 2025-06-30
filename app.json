@@ -2,7 +2,7 @@
   "expo": {
     "name": "TribeFind",
     "slug": "snapchat-clone",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "platforms": [
       "ios",
       "android",
@@ -23,7 +23,7 @@
     "scheme": "tribefind",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "21",
+      "buildNumber": "22",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to capture and share photos.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for video recording.",
