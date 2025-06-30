@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth } from '../services/AuthService'
 import { GoogleSignInService } from '../services/GoogleSignInService'
+import { AppleSignInService } from '../services/AppleSignInService'
 import { useAppDispatch } from '../store'
 import { setTutorialVisible } from '../store/tutorialSlice'
 
@@ -29,7 +30,7 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false)
   const [googleSignInAvailable, setGoogleSignInAvailable] = useState(false)
 
-  const { signIn, signUp, signInWithGoogle, signInWithTwitter, clearSession, enableGoogleSignIn } = useAuth()
+  const { signIn, signUp, signInWithGoogle, signInWithTwitter, signInWithApple, clearSession, enableGoogleSignIn } = useAuth()
   const dispatch = useAppDispatch()
 
   useEffect(() => {
@@ -107,6 +108,28 @@ export default function AuthScreen() {
     } catch (error) {
       console.error('❌ Unexpected Twitter Sign-In error:', error)
       Alert.alert('Error', 'An unexpected error occurred with Twitter Sign In')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAppleSignIn = async () => {
+    console.log('🍎 Apple Sign-In button clicked - starting authentication flow...')
+    
+    setLoading(true)
+    try {
+      console.log('📱 Calling signInWithApple() function...')
+      const result = await signInWithApple()
+      
+      if (result.error) {
+        console.error('❌ Apple Sign-In failed with error:', result.error)
+        Alert.alert('Apple Sign In Error', result.error)
+      } else {
+        console.log('✅ Apple Sign-In completed successfully!')
+      }
+    } catch (error) {
+      console.error('❌ Unexpected Apple Sign-In error:', error)
+      Alert.alert('Error', 'An unexpected error occurred with Apple Sign In')
     } finally {
       setLoading(false)
     }
@@ -294,6 +317,20 @@ export default function AuthScreen() {
                     <Text style={styles.twitterIcon}>🐦</Text>
                     <Text style={styles.twitterButtonText}>
                       Continue with Twitter
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Apple Sign In Button */}
+                <TouchableOpacity
+                  style={[styles.appleButton, loading && styles.authButtonDisabled]}
+                  onPress={handleAppleSignIn}
+                  disabled={loading}
+                >
+                  <View style={styles.appleButtonContent}>
+                    <Text style={styles.appleIcon}>🍎</Text>
+                    <Text style={styles.appleButtonText}>
+                      Continue with Apple
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -613,6 +650,32 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   twitterButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  appleButton: {
+    backgroundColor: '#000000',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  appleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  appleIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  appleButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

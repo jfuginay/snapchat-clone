@@ -114,38 +114,39 @@
       "bundler": "metro"
     },
     "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to capture and share photos.",
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for video recording.",
-          "recordAudioAndroid": true
-        }
+        [
+          "expo-camera",
+          {
+            "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to capture and share photos.",
+            "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for video recording.",
+            "recordAudioAndroid": true
+          }
+        ],
+        [
+          "expo-media-library",
+          {
+            "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to save captured images.",
+            "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos to your photo library.",
+            "isAccessMediaLocationEnabled": true
+          }
+        ],
+        [
+          "react-native-vision-camera",
+          {
+            "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera to record videos and capture photos.",
+            "enableMicrophonePermission": true,
+            "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone to record audio for videos."
+          }
+        ],
+        [
+          "@react-native-google-signin/google-signin",
+          {
+            "iosUrlScheme": "com.googleusercontent.apps.928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s"
+          }
+        ],
+        "expo-apple-authentication",
+        "expo-web-browser"
       ],
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to save captured images.",
-          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos to your photo library.",
-          "isAccessMediaLocationEnabled": true
-        }
-      ],
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera to record videos and capture photos.",
-          "enableMicrophonePermission": true,
-          "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone to record audio for videos."
-        }
-      ],
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.928204958033-cupnqdn1nglhhfmj5pe5vl0oql4heg9s"
-        }
-      ],
-      "expo-web-browser"
-    ],
     "extra": {
       "eas": {
         "projectId": "ba3ffb98-85fc-4e78-9521-90e52f842751"
