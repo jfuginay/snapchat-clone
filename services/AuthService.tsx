@@ -5,6 +5,7 @@ import { setAuth, setLoading, clearAuth, updateUser } from '../store/authSlice'
 import { Session } from '@supabase/supabase-js'
 import { GoogleSignInService } from './GoogleSignInService'
 import { TwitterSignInService } from './TwitterSignInService'
+import { AppleSignInService } from './AppleSignInService'
 import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
 
@@ -30,6 +31,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signInWithGoogle: () => Promise<{ error?: string }>
   signInWithTwitter: () => Promise<{ error?: string }>
+  signInWithApple: () => Promise<{ error?: string }>
   signOut: () => Promise<{ error?: string }>
   resetPassword: (email: string) => Promise<{ error?: string }>
   enableGoogleSignIn: (email: string) => Promise<{ error?: string; success?: boolean; message?: string }>
@@ -322,7 +324,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             dispatch(setAuth({ user: newProfile, session }))
             
             // Check if this is an OAuth user and redirect to Map
-            if (session.user.user_metadata?.provider === 'google' || session.user.user_metadata?.provider === 'twitter') {
+            if (session.user.user_metadata?.provider === 'google' || session.user.user_metadata?.provider === 'twitter' || session.user.user_metadata?.provider === 'apple') {
               console.log('🗺️ OAuth user detected, navigating to Map screen...')
               setTimeout(() => navigateToMapAfterOAuth(), 500)
             }
@@ -349,7 +351,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           dispatch(setAuth({ user: userProfile, session }))
           
           // Check if this is an OAuth user and redirect to Map
-          if (session.user.user_metadata?.provider === 'google' || session.user.user_metadata?.provider === 'twitter') {
+          if (session.user.user_metadata?.provider === 'google' || session.user.user_metadata?.provider === 'twitter' || session.user.user_metadata?.provider === 'apple') {
             console.log('🗺️ OAuth user detected, navigating to Map screen...')
             setTimeout(() => navigateToMapAfterOAuth(), 500)
           }
@@ -548,7 +550,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     email: string
     name?: string
     avatar?: string
-    provider?: 'google' | 'twitter' | 'email'
+    provider?: 'google' | 'twitter' | 'apple' | 'email'
     username?: string
     twitterData?: any
   }) => {
@@ -570,6 +572,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           `${userInfo.provider}-oauth-user`,
           'google-oauth-user',
           'twitter-oauth-user',
+          'apple-oauth-user',
           'password',
           userInfo.email,
           '123456'
@@ -647,7 +650,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('✅ Existing user signed in and updated')
           
           // Navigate to Map if OAuth user
-          if (userInfo.provider === 'google' || userInfo.provider === 'twitter') {
+          if (userInfo.provider === 'google' || userInfo.provider === 'twitter' || userInfo.provider === 'apple') {
             console.log('🗺️ OAuth user signed in, navigating to Map screen...')
             setTimeout(() => navigateToMapAfterOAuth(), 1000)
           }
@@ -667,6 +670,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             ? `tw_${userInfo.twitterData?.username || 'user'}`
             : userInfo.provider === 'google'
             ? userInfo.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || 'google_user'
+            : userInfo.provider === 'apple'
+            ? userInfo.name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || 'apple_user'
             : userInfo.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '')
           
           username = baseUsername
@@ -776,7 +781,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('✅ New user created successfully')
         
         // Navigate to Map if OAuth user
-        if (userInfo.provider === 'google' || userInfo.provider === 'twitter') {
+        if (userInfo.provider === 'google' || userInfo.provider === 'twitter' || userInfo.provider === 'apple') {
           console.log('🗺️ New OAuth user created, navigating to Map screen...')
           setTimeout(() => navigateToMapAfterOAuth(), 1000)
         }
@@ -802,7 +807,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       console.log('✅ Google Sign-In configured, attempting sign in...')
-      const result = await GoogleSignInService.signIn()
+      const result = await GoogleSignInService.signIn() as any
 
       if (result.error) {
         console.log('❌ Google Sign-In failed:', result.error)
@@ -824,7 +829,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const authResult = await createOrSignInUser({
         email: result.user.email || '',
         name: result.user.name || '',
-        avatar: result.user.photo || null,
+        avatar: result.user.photo || undefined,
         provider: 'google'
       })
 
@@ -882,7 +887,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const authResult = await createOrSignInUser({
         email: result.user.email || `${result.user.username}@twitter.placeholder`,
         name: result.user.name || result.user.username,
-        avatar: result.user.profile_image_url || null,
+        avatar: result.user.profile_image_url || undefined,
         provider: 'twitter',
         username: result.user.username,
         twitterData: result.user
@@ -902,6 +907,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('❌ Twitter Sign In error:', error)
       return { error: 'An unexpected error occurred with Twitter Sign In' }
+    } finally {
+      dispatch(setLoading(false))
+    }
+  }
+
+  const signInWithApple = async () => {
+    try {
+      console.log('🍎 Starting Apple Sign In process...')
+      dispatch(setLoading(true))
+
+      // Check if Apple Sign In is available
+      const available = await AppleSignInService.isAvailable()
+      if (!available) {
+        console.log('❌ Apple Sign-In not available')
+        return { error: 'Apple Sign In is not available on this device. Please use iOS 13+ or macOS 10.15+.' }
+      }
+
+      console.log('✅ Apple Sign-In available, attempting sign in...')
+      const result = await AppleSignInService.signIn()
+
+      if (result.error) {
+        console.log('❌ Apple Sign-In failed:', result.error)
+        return { error: result.error }
+      }
+
+      if (!result.user) {
+        console.log('❌ No user data from Apple Sign-In')
+        return { error: 'No user information received from Apple' }
+      }
+
+      console.log('✅ Apple Sign-In successful, processing user...', {
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        hasIdentityToken: !!result.identityToken
+      })
+
+      // Handle case where Apple hides the email (subsequent sign-ins)
+      let userEmail = result.user.email
+      if (!userEmail) {
+        // For users who chose to hide their email, we need to use their Apple ID
+        // We'll create a placeholder email based on their Apple ID
+        userEmail = `${result.user.id}@privaterelay.appleid.com`
+        console.log('⚠️ Apple email hidden, using Apple ID as email:', userEmail)
+      }
+
+      // Create or sign in user with Apple data
+      const authResult = await createOrSignInUser({
+        email: userEmail,
+        name: result.user.name || 'Apple User',
+        avatar: undefined, // Apple doesn't provide profile photos
+        provider: 'apple'
+      })
+
+      if (authResult.error) {
+        console.log('❌ User creation/sign-in failed:', authResult.error)
+        return { error: authResult.error }
+      }
+
+      console.log('✅ Apple Sign-In and user processing complete')
+      
+      // Navigate to Map screen after successful Apple OAuth
+      setTimeout(() => navigateToMapAfterOAuth(), 500)
+      
+      return {}
+    } catch (error) {
+      console.error('❌ Apple Sign In error:', error)
+      return { error: 'An unexpected error occurred with Apple Sign In' }
     } finally {
       dispatch(setLoading(false))
     }
@@ -1212,6 +1285,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signIn,
     signInWithGoogle,
     signInWithTwitter,
+    signInWithApple,
     signOut,
     resetPassword,
     enableGoogleSignIn,
